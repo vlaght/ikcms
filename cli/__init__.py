@@ -13,5 +13,7 @@ def manage(modules, paths=[]):
     commands = {}
     for module in modules:
         m = __import__(module)
-        commands.update(m.cli_commands)
+        for key, value in m.cli_commands.items():
+            assert key not in commands, 'Command {} already exists'.format(key)
+            commands[key] = value
     manage(commands)
