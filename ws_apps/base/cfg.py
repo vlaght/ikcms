@@ -1,4 +1,4 @@
-from ikcms.apps.base
+import ikcms.apps.base
 
 class Cfg(ikcms.apps.base.Cfg):
 
