@@ -1,8 +1,8 @@
-from ikcms.components.templates.jinja2 import Jinja2Component
+from ikcms.components.render.jinja2 import jinja2_component
 import ikcms.apps.composite
 
 class App(ikcms.apps.composite.App):
 
    components = [
-       Jinja2Component(paths=['{SITE_DIR}/templates']),
+       jinja2_component(paths=['{SITE_DIR}/templates']),
    ]

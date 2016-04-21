@@ -7,3 +7,7 @@ class Environment(ikcms.apps.base.env.Environment):
         super().__init__(*args, **kwargs)
         for component in self.app.components:
             component.env_init(self)
+
+    def close(self):
+        for component in self.app.components:
+            component.env_close(self)

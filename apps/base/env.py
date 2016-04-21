@@ -18,6 +18,6 @@ class Environment(StorageFrame):
     def create(cls, *args, **kwargs):
         return VersionedStorage(cls, *args, **kwargs)
 
-    def finalize(self):
+    def close(self):
         pass
 

@@ -7,7 +7,7 @@ from ikcms.web import (
 
 
 def h_index(env, data):
-    return env.render('index.html')
+    return env.render.to_response('index.html')
 
 
 def get_handler(app):
