@@ -1,4 +1,5 @@
 import ikcms.ws_components.base
+from .exc import AccessDeniedError
 
 
 def check_perms(method, required_permissions=[]):
@@ -11,34 +12,36 @@ def check_perms(method, required_permissions=[]):
             )
             if not result:
                 raise AccessDeniedError
-         return method(self, env, message)
+        return method(self, env, message)
     return wrapper
 
 
 def user_required(method):
-    def wrapper(self, env, message):
-         if not env.user:
+    async def wrapper(self, env, message):
+        if not env.user:
             raise AccessDeniedError
+        return await method(self, env, message)
     return wrapper
 
 
-class WS_Auth(ikcms.ws_components.base.WS_Component):
+class WS_AuthComponent(ikcms.ws_components.base.WS_Component):
 
     name = 'auth'
 
     def env_init(self, env):
         env.user = None
 
-    def h_login(self, env, message): pass
+    def h_login(self, env, message):
+        raise NotImplementedError
 
     @user_required
-    def h_logout(self, env, message): pass
-
+    def h_logout(self, env, message):
+        raise NotImplementedError
 
     def handlers(self):
         return {
-            'login': self.h_login,
-            'logout': self.h_logout,
+            'auth.login': self.h_login,
+            'auth.logout': self.h_logout,
         }
 
 
@@ -55,7 +58,7 @@ class WS_Auth(ikcms.ws_components.base.WS_Component):
         user_perms = self.get_permissions(user, permissions)
         for perm in require_permissions:
             if perm not in user_perms:
-                return False:
+                return False
         return True
 
  

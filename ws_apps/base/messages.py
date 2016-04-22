@@ -7,7 +7,7 @@ class Message(dict):
 
     def __init__(self, name, body=None):
         if not name:
-            raise MessageRequiredError('name')
+            raise FieldRequiredError('name')
         if not isinstance(name, str):
             raise MessageError('Field "name" must be str')
 

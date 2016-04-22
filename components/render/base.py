@@ -35,11 +35,6 @@ class RenderComponent(ikcms.components.base.Component):
     name = 'render'
     env_component_class = BoundTemplate
 
-    def __init__(self, app):
-        super().__init__(app)
-        assert not hasattr(app, self.name)
-        setattr(app, self.name, self)
-
     def env_init(self, env):
         setattr(env, self.name, self.env_component_class(self, env))
 

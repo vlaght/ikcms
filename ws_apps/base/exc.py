@@ -4,9 +4,9 @@ class BaseError(Exception):
 
     def __str__(self):
         if self.args:
-            return '{} {}'.format(self.code, self.message)
-        else:
             return '{} {}: {}'.format(self.code, self.message, self.args)
+        else:
+            return '{} {}'.format(self.code, self.message)
 
 
 class MessageError(BaseError):

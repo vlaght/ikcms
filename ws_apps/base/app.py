@@ -51,10 +51,9 @@ class App(AppBase):
                     handler = self.handlers.get(message['name'])
                     if not handler:
                         raise MessageError(
-                           'Handler "{}" not allowed'.format(message['handler']))
+                           'Handler "{}" not allowed'.format(message['name']))
                     await handler(env, message['body'])
                 except BaseError as e:
-                    raise e
                     logger.debug(str(e))
                     error_message = self.messages.ErrorMessage(str(e), e.code)
                     await server.send(client_id, error_message.to_json())

@@ -34,6 +34,9 @@ class WS_Server(ServerBase):
         logger.debug('Connected client {}'.format(websocket.remote_address))
         try:
             await self.app(self, client_id)
+        except websockets.exceptions.ConnectionClosed:
+            logger.debug(
+                'Disconnected client {}'.format(websocket.remote_address))
         except:
             await self.disconnect(client_id, 500, 'Internal server error')
             raise

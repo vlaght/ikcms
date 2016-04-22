@@ -21,3 +21,6 @@ class Cfg(ikcms.apps.composite.Cfg):
 
     MEDIA_URL = '/media/'
 
+    DATABASES = {'': 'mysql://root@localhost/web?charset=utf8'}
+    DATABASE_PARAMS = {}
+

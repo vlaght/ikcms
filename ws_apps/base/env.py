@@ -1,3 +1,6 @@
+import time
+from hashlib import md5
+
 
 class Environment:
 
@@ -5,6 +8,12 @@ class Environment:
         self.app = app
         self._server = server
         self._client_id = client_id
+        self.session_id = self.get_session_id()
+
+    def get_session_id(self):
+        salt = "ferifiewkmfwbkvewjei8943uovhfkjdnvkdfsnvkfdnvkdfkcdks"
+        raw_session_id = "{}.{}.{}".format(time.time(), self._client_id, salt)
+        return md5(raw_session_id.encode('utf8')).hexdigest()
 
     async def send_to(self, clients, name, body=None):
         for client in clients:
