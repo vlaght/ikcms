@@ -11,7 +11,7 @@ class Environment:
         self.session_id = self.get_session_id()
 
     def get_session_id(self):
-        salt = "ferifiewkmfwbkvewjei8943uovhfkjdnvkdfsnvkfdnvkdfkcdks"
+        salt = self.app.cfg.WS_AUTH_SECRET
         raw_session_id = "{}.{}.{}".format(time.time(), self._client_id, salt)
         return md5(raw_session_id.encode('utf8')).hexdigest()
 

@@ -7,6 +7,8 @@ class Cfg(object):
 
     SITE_ID = 'base'
 
+    WS_AUTH_SECRET = 'e4488a01ee7b537bac40681c267c04b3'
+
     @cached_property
     def ROOT_DIR(self):
         # May cause problems when running app with uWSGI,
