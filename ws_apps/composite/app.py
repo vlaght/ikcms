@@ -1,5 +1,5 @@
 import ikcms.ws_apps.base
-
+from .exc import ComponentNotFoundError
 
 class App(ikcms.ws_apps.base.App):
 
@@ -14,3 +14,11 @@ class App(ikcms.ws_apps.base.App):
     def get_env_class(self):
         from .env import Environment
         return Environment
+
+    def get_component(self, name):
+        for component in self.components:
+            if component.name==name:
+                return component
+        else:
+            raise ComponentNotFoundError(name)
+

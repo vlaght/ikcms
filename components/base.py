@@ -9,6 +9,7 @@ class Component:
         setattr(app, self.name, self)
 
     def env_class(self, env_class): pass
+    def env_init(self, env): pass
     def env_close(self, env): pass
 
     @classmethod
