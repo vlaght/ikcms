@@ -1,6 +1,6 @@
 class BaseError(Exception):
     message = 'Error'
-    code = 0
+    code = 500
 
     def __str__(self):
         if self.args:
@@ -11,11 +11,8 @@ class BaseError(Exception):
 
 class MessageError(BaseError):
     message = 'Message error'
-    code = 100
 
 
 class FieldRequiredError(MessageError):
-
     message = 'Field required'
-    code = 101
 

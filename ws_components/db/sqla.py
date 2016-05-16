@@ -3,10 +3,10 @@ from sqlalchemy.orm.query import Query
 from iktomi.db.sqla import multidb_binds
 from iktomi.utils import cached_property
 
-import ikcms.components.db.base
+import ikcms.ws_components.db.base
 
 
-class SQLAComponent(ikcms.components.db.base.DBComponent):
+class WS_SQLAComponent(ikcms.ws_components.db.base.WS_DBComponent):
 
     session_maker_class = sessionmaker
     query_class = Query
@@ -52,6 +52,6 @@ class SQLAComponent(ikcms.components.db.base.DBComponent):
         return self.models
 
 
-sqla_component = SQLAComponent.create
+ws_sqla_component = WS_SQLAComponent.create
 
 
