@@ -47,12 +47,16 @@ class App(AppBase):
             while True:
                 try:
                     raw_message =  await server.recv(client_id)
-                    message = self.messages.Message.from_json(raw_message)
-                    handler = self.handlers.get(message['name'])
+                    request = self.messages.RequestMessage.from_json(raw_message)
+                    handler = self.handlers.get(request['name'])
                     if not handler:
                         raise MessageError(
                            'Handler "{}" not allowed'.format(message['name']))
-                    await handler(env, message['body'])
+                    result = await handler(env, request['body'])
+                    if result:
+                        response = self.messages.ResponseMessage.from_request(
+                            request, result)
+                        await server.send(client_id, response.to_json())
                 except BaseError as e:
                     logger.debug(str(e))
                     error_message = self.messages.ErrorMessage(str(e), e.code)

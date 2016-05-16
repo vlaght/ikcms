@@ -40,8 +40,8 @@ class WS_AuthComponent(ikcms.ws_components.base.WS_Component):
 
     def handlers(self):
         return {
-            'auth.login': self.h_login,
-            'auth.logout': self.h_logout,
+            'auth.login.request': self.h_login,
+            'auth.logout.request': self.h_logout,
         }
 
 
