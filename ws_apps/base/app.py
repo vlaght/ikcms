@@ -51,7 +51,7 @@ class App(AppBase):
                     handler = self.handlers.get(request['name'])
                     if not handler:
                         raise MessageError(
-                           'Handler "{}" not allowed'.format(message['name']))
+                           'Handler "{}" not allowed'.format(request['name']))
                     result = await handler(env, request['body'])
                     if result:
                         response = self.messages.ResponseMessage.from_request(
