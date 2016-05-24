@@ -16,3 +16,6 @@ class MessageError(BaseError):
 class FieldRequiredError(MessageError):
     message = 'Field required'
 
+
+class FieldNotFoundError(MessageError):
+    message = 'Field not found'
