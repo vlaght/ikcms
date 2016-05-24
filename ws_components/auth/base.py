@@ -2,7 +2,8 @@ import ikcms.ws_components.base
 from .exc import AccessDeniedError
 
 
-def check_perms(method, required_permissions=[]):
+def check_perms(method, required_permissions=None):
+    required_permissions = required_permissions or []
     def wrapper(self, env, message):
         if self.permissions:
             result = env.app.auth.check_permissions(
@@ -44,7 +45,6 @@ class WS_AuthComponent(ikcms.ws_components.base.WS_Component):
             'auth.logout.request': self.h_logout,
         }
 
-
     def get_permissions(self, user, permissions):
         user_perms = set(permissions.get(None, []))
         if not user:
@@ -56,9 +56,7 @@ class WS_AuthComponent(ikcms.ws_components.base.WS_Component):
 
     def check_permissions(self, user, permissions, required_permissions):
         user_perms = self.get_permissions(user, permissions)
-        for perm in require_permissions:
+        for perm in required_permissions:
             if perm not in user_perms:
                 return False
         return True
-
- 

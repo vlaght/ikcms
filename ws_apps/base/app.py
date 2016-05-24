@@ -1,5 +1,4 @@
 import logging
-import json
 
 from .exc import BaseError, MessageError
 from . import messages
@@ -33,8 +32,8 @@ class App(AppBase):
         return {}
 
     def get_env_class(self):
-       from .env import Environment
-       return Environment
+        from .env import Environment
+        return Environment
 
     @property
     def clients(self):
@@ -46,12 +45,12 @@ class App(AppBase):
         try:
             while True:
                 try:
-                    raw_message =  await server.recv(client_id)
+                    raw_message = await server.recv(client_id)
                     request = self.messages.RequestMessage.from_json(raw_message)
                     handler = self.handlers.get(request['name'])
                     if not handler:
                         raise MessageError(
-                           'Handler "{}" not allowed'.format(request['name']))
+                            'Handler "{}" not allowed'.format(request['name']))
                     result = await handler(env, request['body'])
                     if result:
                         response = self.messages.ResponseMessage.from_request(

@@ -1,4 +1,8 @@
-import os, sys, logging, inspect
+import os
+import sys
+import pwd
+import inspect
+import logging
 
 from iktomi.utils import cached_property
 
@@ -43,7 +47,6 @@ class Cfg(object):
         return os.path.join(self.SITE_DIR, 'static')
 
     STATIC_URL = '/static/'
-
 
     def __init__(self, **kwargs):
         self._init_kwargs = kwargs

@@ -1,7 +1,6 @@
 from iktomi.cli.sqla import Sqla
-from iktomi.cli.lazy import LazyCli
-
 from .base import Cli
+
 
 class DBCli(Cli):
 
