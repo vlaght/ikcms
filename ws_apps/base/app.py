@@ -1,7 +1,7 @@
 import logging
 import json
 
-from .exc import BaseError, MessageError
+from . import exc
 from . import messages
 
 logger = logging.getLogger(__name__)
@@ -47,20 +47,26 @@ class App(AppBase):
             while True:
                 try:
                     raw_message =  await server.recv(client_id)
-                    request = self.messages.RequestMessage.from_json(raw_message)
-                    handler = self.handlers.get(request['name'])
+                    request = self.messages.from_json(raw_message)
+                    handler = self.handlers.get(request['handler'])
                     if not handler:
-                        raise MessageError(
-                           'Handler "{}" not allowed'.format(message['name']))
+                        raise exc.HandlerNotAllowed(request['handler'])
                     result = await handler(env, request['body'])
-                    if result:
-                        response = self.messages.ResponseMessage.from_request(
-                            request, result)
-                        await server.send(client_id, response.to_json())
-                except BaseError as e:
-                    logger.debug(str(e))
-                    error_message = self.messages.ErrorMessage(str(e), e.code)
-                    await server.send(client_id, error_message.to_json())
+                    response = self.messages.ResponseMessage.from_request(
+                        request, body=result)
+                except exc.BaseError as e:
+                    response = self.error_response(e, locals())
+                await server.send(client_id, response.to_json())
         finally:
             del self.client_envs[client_id]
+
+
+    def error_response(self, e, locals):
+        logger.debug(str(e))
+        request = locals.get('request')
+        if request:
+            return self.messages.RequestErrorMessage.from_request(
+                                                    request, e.error, str(e))
+        else:
+            return self.messages.ErrorMessage(e.error, str(e))
 

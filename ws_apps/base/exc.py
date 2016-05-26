@@ -1,18 +1,35 @@
 class BaseError(Exception):
-    message = 'Error'
-    code = 500
+    message = 'Error message'
+
+    @property
+    def error(self):
+        return self.__class__.__name__
 
     def __str__(self):
         if self.args:
-            return '{} {}: {}'.format(self.code, self.message, self.args)
+            return '{}: {}'.format(self.message, self.args)
         else:
-            return '{} {}'.format(self.code, self.message)
+            return '{}'.format(self.message)
 
 
 class MessageError(BaseError):
     message = 'Message error'
 
 
-class FieldRequiredError(MessageError):
-    message = 'Field required'
+class MessageFieldsError(MessageError):
 
+    message = "{}"
+    errors = {}
+
+    def __init__(self, errors):
+        self.errors = errors
+
+    def __str__(self):
+        errors = ['Field "{}": {}.'.format(key, error) \
+                                    for key, error in self.errors.items()]
+        return self.message.format(' '.join(errors))
+
+
+class HandlerNotAllowed(BaseError):
+
+    message = 'Handler not allowed'
