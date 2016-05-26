@@ -1,10 +1,11 @@
 from iktomi.utils.storage import StorageFrame
+from iktomi.utils.storage import VersionedStorage
 from iktomi.web.route_state import RouteState
 
 
 class Environment(StorageFrame):
 
-    def __init__(self, app=None, request=None, _parent_storage=None, **kwargs):
+    def __init__(self, app=None, request=None, root=None, _parent_storage=None, **kwargs):
         StorageFrame.__init__(self, _parent_storage=_parent_storage, **kwargs)
         self.app = app
         self.request = request

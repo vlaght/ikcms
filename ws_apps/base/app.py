@@ -1,5 +1,4 @@
 import logging
-import json
 
 from . import exc
 from . import messages
@@ -33,8 +32,8 @@ class App(AppBase):
         return {}
 
     def get_env_class(self):
-       from .env import Environment
-       return Environment
+        from .env import Environment
+        return Environment
 
     @property
     def clients(self):

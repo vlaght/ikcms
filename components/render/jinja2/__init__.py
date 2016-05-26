@@ -13,10 +13,7 @@ class Jinja2Component(RenderComponent):
 
     def __init__(self, app):
         super().__init__(app)
-        self.paths = map(
-            lambda x: x.format(**app.cfg.as_dict()),
-            self.paths,
-        )
+        self.paths = [path.format(**app.cfg.as_dict()) for path in self.paths]
         self._env = self._make_env()
 
     def _make_env(self):
@@ -28,8 +25,8 @@ class Jinja2Component(RenderComponent):
         env.globals.update(self.globals)
         return env
 
-    def render(self, template_name, vars):
-        return self._env.get_template(template_name).render(**vars)
+    def render(self, template_name, context):
+        return self._env.get_template(template_name).render(**context)
     __call__ = render
 
 

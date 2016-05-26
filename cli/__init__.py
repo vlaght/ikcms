@@ -6,7 +6,8 @@ def add_paths(paths):
             sys.path.insert(0, path)
 
 
-def manage(modules, paths=[]):
+def manage(modules, paths=None):
+    paths = paths or []
     add_paths(paths)
     from iktomi.cli import manage
 

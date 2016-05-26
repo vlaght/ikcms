@@ -1,12 +1,9 @@
-import logging, re
-
+import logging
 from webob import Request
-from webob.exc import (
-    HTTPException,
-    HTTPInternalServerError,
-    HTTPNotFound,
-)
-from iktomi.utils.storage import StorageFrame, VersionedStorage
+from webob.exc import HTTPException
+from webob.exc import HTTPInternalServerError
+from webob.exc import HTTPNotFound
+from iktomi.utils.storage import VersionedStorage
 from iktomi.web.app import is_host_valid
 from iktomi.web import Reverse
 
@@ -25,14 +22,14 @@ class App:
         self.root = self.get_root()
 
     def get_env_class(self):
-       from .env import Environment
-       return Environment
+        from .env import Environment
+        return Environment
 
     def get_handler(self):
-       raise NotImplementedError
+        raise NotImplementedError
 
     def get_root(self):
-       return Reverse.from_handler(self.handler)
+        return Reverse.from_handler(self.handler)
 
     def handle_error(self, env):
         '''
@@ -67,13 +64,14 @@ class App:
 
     def __call__(self, environ, start_response):
         '''
-        WSGI interface method. 
+        WSGI interface method.
         Creates webob and iktomi wrappers and calls `handle` method.
         '''
         # validating Host header to prevent problems with url parsing
         if not is_host_valid(environ['HTTP_HOST']):
-            logger.warning('Unusual header "Host: {}", return HTTPNotFound'\
-                           .format(environ['HTTP_HOST']))
+            logger.warning(
+                'Unusual header "Host: %s", return HTTPNotFound',
+                environ['HTTP_HOST'])
             return HTTPNotFound()(environ, start_response)
         request = Request(environ, charset='utf-8')
         env = VersionedStorage(self.env_class, request=request, app=self)

@@ -1,8 +1,5 @@
 from code import interact
-
-from iktomi.cli.app import App as _AppCli
 from ikcms.ws_servers.websockets import WS_Server
-
 from .base import Cli
 
 
