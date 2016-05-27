@@ -17,6 +17,8 @@ class RawValueTypeError(Exception):
         return 'Field {} type error: {} required'.format(self.field, self.tp)
 
 
+class NOTSET: pass
+
 
 class Converter:
 
@@ -65,8 +67,8 @@ class Dict(Converter):
         values = {}
         errors = {}
         for _name, _field in field.items():
-            _values, _errors = _field.to_python(raw_dict.get(_name))
-            if _values:
+            _values, _errors = _field.to_python(raw_dict.get(_name, NOTSET))
+            if _values is not NOTSET:
                 values[_name] = _values
             if _errors:
                 errors[_name] = _errors

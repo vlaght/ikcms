@@ -22,9 +22,11 @@ class MessageForm(Form):
         return values
 
 
-class mf_name(fields.StringField):
+
+class mf_name_required(fields.StringField):
     name = 'name'
     label = 'Название сообщения'
+    raw_required = True
     validators = (validators.required,)
 
 
@@ -32,41 +34,54 @@ class mf_body(fields.BaseField):
     conv = convs.RawDict()
     name = 'body'
     label = 'Тело сообщения'
-    #validators = (validators.required,)
+    to_python_default = {}
 
 
 class mf_handler(fields.StringField):
     name = 'handler'
     label = 'Название хендлера'
+    to_python_default = None
+
+
+class mf_handler_required(mf_handler):
+    raw_required = True
     validators = (validators.required,)
 
 
 class mf_request_id(fields.StringField):
     name = 'request_id'
     label = 'Идентификатор запроса'
+    to_python_default = None
+
+
+class mf_request_id_required(mf_request_id):
+    raw_required = True
     validators = (validators.required,)
 
 
-class mf_error(fields.StringField):
+class mf_error_required(fields.StringField):
     name = 'error'
     label = 'Идентификатор ошибки'
+    raw_required = True
     validators = (validators.required,)
 
 
-class mf_message(fields.StringField):
+class mf_message_required(fields.StringField):
     name = 'message'
     label = 'Текстовое сообщение'
+    raw_required = True
     validators = (validators.required,)
 
 
-class mf_body_error(mf_body):
+class mf_body_error_required(mf_body):
     conv = convs.Dict
     fields = [
-        mf_error,
-        mf_message,
+        mf_error_required,
+        mf_message_required,
     ]
     label = 'Teло сообщения об ошибке'
-
+    raw_required = True
+    validators = (validators.required,)
 
 
 
@@ -75,6 +90,7 @@ class Message(dict):
     name = None
 
     form = MessageForm([
+        mf_name_required,
         mf_body,
     ])
 
@@ -88,28 +104,14 @@ class Message(dict):
         return json.dumps(self)
 
 
-class ErrorMessage(Message):
-
-    name = 'error'
-
-    form = MessageForm([
-        mf_body_error,
-    ])
-
-    def __init__(self, error, message):
-        super().__init__(dict(
-            error=error,
-            message=message,
-        ))
-
-
 class RequestMessage(Message):
 
     name = 'request'
 
     form = MessageForm([
-        mf_request_id,
-        mf_handler,
+        mf_name_required,
+        mf_request_id_required,
+        mf_handler_required,
         mf_body,
     ])
 
@@ -124,8 +126,9 @@ class ResponseMessage(Message):
     name = 'response'
 
     form = MessageForm([
-        mf_request_id,
-        mf_handler,
+        mf_name_required,
+        mf_request_id_required,
+        mf_handler_required,
         mf_body,
     ])
 
@@ -144,19 +147,23 @@ class ResponseMessage(Message):
         )
 
 
-class RequestErrorMessage(ErrorMessage):
+class ErrorMessage(Message):
 
-    name = 'request_error'
+    name = 'error'
 
     form = MessageForm([
+        mf_name_required,
         mf_request_id,
         mf_handler,
-        mf_body_error,
+        mf_body_error_required,
     ])
 
 
-    def __init__(self, error, message, request_id, handler):
-        super().__init__(error, message)
+    def __init__(self, error, message, request_id=None, handler=None):
+        super().__init__(dict(
+            error=error,
+            message=message,
+        ))
         self['request_id'] = request_id
         self['handler'] = handler
 
@@ -178,7 +185,6 @@ INCOMING_MESSAGES = dict([(cls.name, cls) for cls in [
 OUTGOING_MESSAGES = dict([(cls.name, cls) for cls in [
     ResponseMessage,
     ErrorMessage,
-    RequestErrorMessage,
 ]])
 
 
@@ -194,12 +200,13 @@ def parse_json(raw_message):
 
 def from_json(raw_message, messages=INCOMING_MESSAGES):
     message = parse_json(raw_message)
-    name = message.pop('name', None)
+    name = message.get('name')
     if not name:
         raise exc.MessageError('Message name required')
     cls = messages.get(name)
     if not cls:
         raise exc.MessageError('Unknown message name: {}'.format(name))
-    print(cls.form.to_python(message))
-    return cls(**cls.form.to_python(message))
+    kwargs = cls.form.to_python(message)
+    kwargs.pop('name')
+    return cls(**kwargs)
 

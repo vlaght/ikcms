@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from iktomi.forms.convs import ValidationError
+from .convs import ValidationError, RawValueTypeError
 
 from . import convs
 from . import validators
@@ -14,6 +14,8 @@ class BaseField(OrderedDict):
     fields = []
     validators = ()
     widget = widgets.Widget()
+    raw_required = False
+    to_python_default = convs.NOTSET
 
     def __init__(self, form, parent=None):
         assert self.name
@@ -23,7 +25,14 @@ class BaseField(OrderedDict):
         for field in self.fields:
             self[field.name] = field(form, self)
 
+    def raw_value_notset(self):
+        if self.raw_required:
+            raise RawValueTypeError('Required', self.name)
+        return self.to_python_default
+
     def to_python(self, raw_value):
+        if raw_value is convs.NOTSET:
+            return self.raw_value_notset(), None
         values, errors = self.conv.to_python(self, raw_value)
         if errors:
             return None, errors

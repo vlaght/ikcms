@@ -54,6 +54,7 @@ class App(AppBase):
                     response = self.messages.ResponseMessage.from_request(
                         request, body=result)
                 except exc.BaseError as e:
+                    logger.debug(str(e))
                     response = self.error_response(e, locals())
                 await server.send(client_id, response.to_json())
         finally:
@@ -61,11 +62,11 @@ class App(AppBase):
 
 
     def error_response(self, e, locals):
-        logger.debug(str(e))
         request = locals.get('request')
-        if request:
-            return self.messages.RequestErrorMessage.from_request(
-                                                    request, e.error, str(e))
-        else:
-            return self.messages.ErrorMessage(e.error, str(e))
+        return self.messages.ErrorMessage(
+            error=e.error,
+            message=str(e),
+            request_id=request['request_id'],
+            handler=request['handler'],
+        )
 
