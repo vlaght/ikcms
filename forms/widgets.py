@@ -13,7 +13,6 @@ class Widget:
             'widget': self.name,
             'name': field.name,
             'label': field.label,
-            'fields': [_field.widget.to_dict(_field) \
-                                                for _field in field.values()],
+            'fields': [f.widget.to_dict(f) for f in field.named_fields.values()],
         }
 

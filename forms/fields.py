@@ -6,59 +6,96 @@ from . import validators
 from . import widgets
 
 
-class BaseField(OrderedDict):
+__all__ = (
+    'Field',
+    'StringField',
+    'IntField',
+    'DictField',
+    'ListField',
+    'RawDictField',
+    'RawlistField',
+)
+
+
+class Field:
 
     name = None
     label = None
-    conv = None
+    conv = convs.Converter
     fields = []
     validators = ()
     widget = widgets.Widget()
+
     raw_required = False
-    to_python_default = convs.NOTSET
+    to_python_default = None
 
-    def __init__(self, form, parent=None):
-        assert self.name
-        assert self.conv
-        self.form = form
-        self.parent = parent # XXX It's necessary?
-        for field in self.fields:
-            self[field.name] = field(form, self)
-
-    def raw_value_notset(self):
-        if self.raw_required:
-            raise RawValueTypeError('Required', self.name)
-        return self.to_python_default
+    def __init__(self, context={}, parent=None):
+        self.context = context.copy()
+        self.parent = parent
+        self.fields = [f(context, self) for f in self.fields]
+        self.named_fields = OrderedDict(
+                                [(f.name, f) for f in self.fields if f.name])
+        self.conv = self.conv(self)
+        self.validators = [v(self) for v in self.validators]
 
     def to_python(self, raw_value):
-        if raw_value is convs.NOTSET:
-            return self.raw_value_notset(), None
-        values, errors = self.conv.to_python(self, raw_value)
-        if errors:
-            return None, errors
-        try:
-            for v in self.validators:
-                values = v(self, values)
-        except ValidationError as e:
-            return None, str(e)
-        return values, errors
+        value = self.conv.to_python(raw_value)
+        for v in self.validators:
+            value = v(value)
+        return value
 
     def from_python(self, value):
-        return self.conv.from_python(self, value)
+        return self.conv.from_python(value)
 
 
-class StringField(BaseField):
-    conv = convs.Str()
+class StringField(Field):
+    conv = convs.Str
+    validators = [
+        validators.Required,
+        validators.Regex,
+        validators.Len,
+    ]
 
-class IntField(BaseField):
-    conv = convs.Int()
+    required = False
+    regex = None
+    min_len = None
+    max_len = None
 
-class DictField(BaseField):
-    conv = convs.Dict()
 
-class RawDictField(BaseField):
-    conv = convs.RawDict()
+class IntField(Field):
+    conv = convs.Int
+    validators = [
+        validators.Required,
+        validators.Range,
+    ]
 
-class ListField(BaseField):
-    conv = convs.list_of_dicts
+    required = False
+    min_value = None
+    max_value = None
+
+
+class DictField(Field):
+    conv = convs.Dict
+    validators = [validators.Required]
+
+    required = False
+
+
+class ListField(Field):
+    conv = convs.List
+    validators = [
+        validators.Required,
+        validators.Len,
+    ]
+
+    required = False
+    min_len = None
+    max_len = None
+
+
+class RawDictField(Field):
+    conv = convs.RawDict
+
+class RawListField(Field):
+    conv = convs.RawList
 

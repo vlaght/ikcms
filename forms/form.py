@@ -1,21 +1,32 @@
 from collections import OrderedDict
 
-from . import convs
+from . import convs, validators
 
 
 class Form(OrderedDict):
 
-    conv = convs.Dict()
+    fields = []
 
-    def __init__(self, fields_classes):
-        for field in fields_classes:
-            self[field.name] = field(self)
+    def __init__(self, **context):
+        context.setdefault('form', self)
+        for field in self.fields:
+            assert field.name
+            self[field.name] = field(context)
 
-    def to_python(self, raw_value):
-        return self.conv.to_python(self, raw_value)
+    def to_python(self, raw_values):
+        values = {}
+        errors = {}
+        for name, field in self.items():
+            try:
+                values[name] = field.to_python(
+                                            raw_values.get(name, convs.NOTSET))
+            except validators.ValidationError as e:
+                errors[name] = e.errors
+        return values, errors
 
-    def from_python(self, value):
-        return self.conv.from_python(self, value)
+    def from_python(self, raw_values):
+        return [field.from_python(raw_values[name]) \
+                                for name, field in self.items()]
 
     def values_to_python(self, raw_values):
         return [self.to_python(raw_value) for raw_value in raw_values]
@@ -24,4 +35,4 @@ class Form(OrderedDict):
         return [self.from_python(value) for value in values]
 
     def get_cfg(self):
-        return [field.widget.to_dict(field) for field in self.values()]
+        return [f.widget.to_dict(f) for f in self.values()]

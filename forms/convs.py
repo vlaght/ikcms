@@ -1,6 +1,20 @@
 from .validators import ValidationError
 
 
+__all__ = (
+    'RawValueTypeError',
+    'ValidationError',
+    'NOTSET',
+    'Converter',
+    'RawDict',
+    'RawList',
+    'Dict',
+    'List',
+    'Str',
+    'Int',
+    'Bool',
+)
+
 class RawValueTypeError(Exception):
 
     def __init__(self, tp, field=''):
@@ -22,116 +36,119 @@ class NOTSET: pass
 
 class Converter:
 
-    def to_python(self, field, raw_value):
-        return raw_value, None
-
-    def from_python(self, form, value):
-        return value
-
-
-class Raw(Converter):
-
     raw_types = str,
 
-    def to_python(self, field, raw_value):
-        if raw_value is None:
-            return None, None
-        if isinstance(raw_value, self.raw_types):
-            return raw_value, None
-        else:
-            raise RawValueTypeError(self.raw_types, field.name)
+    def __init__(self, field):
+        self.field = field
 
-    def from_python(self, field, value):
+    def to_python(self, raw_value):
+        if raw_value is None:
+            return None
+        if raw_value is NOTSET:
+            return self._raw_value_notset()
+
+        if isinstance(raw_value, self.raw_types):
+            return raw_value
+        else:
+            raise RawValueTypeError(dict, self.field.name)
+
+    def from_python(self, value):
         if value is None:
             return None
         assert isinstance(value, self.raw_types)
         return value
 
+    def _raw_value_notset(self):
+        if self.field.raw_required:
+            raise RawValueTypeError('Required', self.field.name)
+        return self.field.to_python_default
 
-class RawDict(Raw):
+
+class RawDict(Converter):
     raw_types = dict,
 
 
-class RawList(Raw):
+class RawList(Converter):
     raw_types = list,
 
 
-class Dict(Converter):
+class Dict(RawDict):
 
-    raw_conv = RawDict()
-
-    def to_python(self, field, raw_value):
-        raw_dict, errors = self.raw_conv.to_python(field, raw_value)
-        if errors:
-            return None, errors
+    def to_python(self, raw_dict):
+        raw_dict = super().to_python(raw_dict)
+        if raw_dict is None:
+            return None
         values = {}
         errors = {}
-        for _name, _field in field.items():
-            _values, _errors = _field.to_python(raw_dict.get(_name, NOTSET))
-            if _values is not NOTSET:
-                values[_name] = _values
-            if _errors:
-                errors[_name] = _errors
-        return values, errors
+        for name, subfield in self.field.named_fields.items():
+            try:
+                values[name] = subfield.to_python(raw_dict.get(name, NOTSET))
+            except ValidationError as exc:
+                errors[name] = exc.error
+            else:
+                errors[name] = None
+        if any(errors.values()):
+            raise ValidationError(errors)
+        return values
 
-    def from_python(self, field, value):
-        value = self.raw_conv.from_python(field, value)
-        return dict([(_name, _field.from_python(value.get(_name))) \
-                                            for _name, _field in field.items()])
+    def from_python(self, python_dict):
+        python_dict = super().from_python(python_dict)
+        if python_dict is None:
+            return None
+        return dict([(name, subfield.from_python(value.get(name))) \
+                        for name, subfield in self.field.named_fields.items()])
 
 
-class List(Converter):
+class List(RawList):
 
-    raw_conv = RawList()
-
-    def __init__(self, item_conv):
-        self.item_conv = item_conv
-
-    def to_python(self, field, raw_value):
-        raw_list, errors = self.raw_conv.to_python(field, raw_value)
-        if errors:
-            return None, errors
+    def to_python(self, raw_list):
+        raw_list = super().to_python(raw_list)
+        if raw_dict is None:
+            return None
         values = []
         errors = []
-        for _raw_value in raw_list:
-            _values, _errors = self.item_conv.to_python(field, _raw_value)
-            values.append(_values)
-            errors.append(_errors)
-        return values, errors
+        for raw_value in raw_list:
+            try:
+                values.append(self.conv.to_python(field, raw_value))
+            except ValidationError as exc:
+                errors.append(exc.error)
+            else:
+                errors.append(None)
+        if any(errors):
+            raise ValidationError(errors)
+        return values
 
-    def from_python(self, field, value):
-        value = self.raw_conv.from_python(field, value)
-        return dict([self.item_conv.from_python(field, _value) \
-                                                        for _value in value])
+    def from_python(self, python_list):
+        python_list = super().from_python(python_list)
+        if python_list is None:
+            return None
+        return [self.fields[0].from_python(value) for value in python_list]
 
 
-class Str(Raw): pass
+
+class Str(Converter): pass
 
 
-class Int(Raw):
+class Int(Converter):
 
     raw_types = int, str
     error_notvalid = 'it is not valid integer'
 
-    def to_python(self, field, raw_value):
-        raw_value, errors = super().to_python(field, raw_value)
-        if errors:
-            return None, errors
+    def to_python(self, raw_value):
+        raw_value = super().to_python(raw_value)
         if raw_value is None:
-            return None, None
+            return None
         try:
             value = int(raw_value)
         except ValueError:
-            return None, self.error_notvalid
-        return value, None
+            raise ValidationError(self.error_notvalid)
+        return value
 
 
 class Bool(Converter):
+    raw_types = bool, int, str
 
-    def to_python(self, field, value):
-        return super().to_python(field, bool(value))
+    def to_python(self, value):
+        return super().to_python(bool(value))
 
 
-list_of_dicts = List(Dict)
-list_of_str = List(Str)
-list_of_int = List(Int)
