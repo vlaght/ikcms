@@ -1,7 +1,8 @@
+from datetime import date, datetime
 from .validators import ValidationError
 
 
-__all__ = (
+__all__ = [
     'RawValueTypeError',
     'ValidationError',
     'NOTSET',
@@ -13,7 +14,9 @@ __all__ = (
     'Str',
     'Int',
     'Bool',
-)
+    'Date',
+]
+
 
 class RawValueTypeError(Exception):
 
@@ -31,12 +34,12 @@ class RawValueTypeError(Exception):
         return 'Field {} type error: {} required'.format(self.field, self.tp)
 
 
-class NOTSET: pass
+class NOTSET:
+    pass
 
 
 class Converter:
-
-    raw_types = str,
+    raw_type = str
 
     def __init__(self, field):
         self.field = field
@@ -46,16 +49,14 @@ class Converter:
             return None
         if raw_value is NOTSET:
             return self._raw_value_notset()
-
-        if isinstance(raw_value, self.raw_types):
+        if isinstance(raw_value, self.raw_type):
             return raw_value
         else:
-            raise RawValueTypeError(dict, self.field.name)
+            raise RawValueTypeError(self.raw_type, self.field.name)
 
     def from_python(self, value):
         if value is None:
             return None
-        assert isinstance(value, self.raw_types)
         return value
 
     def _raw_value_notset(self):
@@ -65,17 +66,34 @@ class Converter:
 
 
 class RawDict(Converter):
-    raw_types = dict,
+    raw_type = dict
+    error_not_valid = 'Not a valid dict'
 
 
 class RawList(Converter):
-    raw_types = list,
+    raw_type = list
+    error_not_valid = 'Not a valid list'
 
 
-class Dict(RawDict):
+class Str(Converter):
+    raw_type = str
+    error_not_valid = 'Not a valid string'
+
+
+class Int(Converter):
+    raw_type = int
+    error_not_valid = 'Not a valid integer'
+
+
+class Bool(Converter):
+    raw_type = bool
+    error_not_valid = 'Not a valid boolean'
+
+
+class Dict(Converter):
+    raw_type = dict
 
     def to_python(self, raw_dict):
-        raw_dict = super().to_python(raw_dict)
         if raw_dict is None:
             return None
         values = {}
@@ -92,24 +110,24 @@ class Dict(RawDict):
         return values
 
     def from_python(self, python_dict):
-        python_dict = super().from_python(python_dict)
         if python_dict is None:
             return None
         return dict([(name, subfield.from_python(value.get(name))) \
                         for name, subfield in self.field.named_fields.items()])
 
 
-class List(RawList):
+class List(Converter):
+    raw_type = list
 
     def to_python(self, raw_list):
         raw_list = super().to_python(raw_list)
-        if raw_dict is None:
+        if raw_list is None:
             return None
         values = []
         errors = []
         for raw_value in raw_list:
             try:
-                values.append(self.conv.to_python(field, raw_value))
+                values.append(self.field.to_python(raw_value))
             except ValidationError as exc:
                 errors.append(exc.error)
             else:
@@ -119,36 +137,25 @@ class List(RawList):
         return values
 
     def from_python(self, python_list):
-        python_list = super().from_python(python_list)
         if python_list is None:
             return None
-        return [self.fields[0].from_python(value) for value in python_list]
+        return [self.field.from_python(value) for value in python_list]
 
 
-
-class Str(Converter): pass
-
-
-class Int(Converter):
-
-    raw_types = int, str
-    error_notvalid = 'it is not valid integer'
+class Date(Converter):
+    raw_type = str
+    error_not_valid = 'Not a valid date'
 
     def to_python(self, raw_value):
-        raw_value = super().to_python(raw_value)
-        if raw_value is None:
+        value = super().to_python(raw_value)
+        if value is None:
             return None
         try:
-            value = int(raw_value)
-        except ValueError:
-            raise ValidationError(self.error_notvalid)
-        return value
+            return datetime.strptime(raw_value, self.field.format).date()
+        except ValueError as exc:
+            raise ValidationError(self.error_not_valid)
 
-
-class Bool(Converter):
-    raw_types = bool, int, str
-
-    def to_python(self, value):
-        return super().to_python(bool(value))
-
-
+    def from_python(self, python_value):
+        if python_value is None:
+            return None
+        return python_value.strftime(self.field.format)

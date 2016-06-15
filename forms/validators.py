@@ -11,11 +11,11 @@ __all__ = (
 
 class ValidationError(Exception):
 
-    def __init__(self, errors):
-        self.errors = errors
+    def __init__(self, error):
+        self.error = error
 
     def __str__(self):
-        return 'ValidationError: {}'.format(self.errors)
+        return 'ValidationError: {}'.format(self.error)
 
 
 class Validator:
