@@ -30,9 +30,10 @@ class SQLAComponent(ikcms.components.db.base.DBComponent):
 
     @cached_property
     def binds(self):
-        return multidb_binds(self.databases,
-                            package=self.models,
-                            engine_params=self.database_params)
+        return multidb_binds(
+            self.databases,
+            package=self.models,
+            engine_params=self.database_params)
 
     @cached_property
     def databases(self):

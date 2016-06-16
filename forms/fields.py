@@ -13,7 +13,7 @@ __all__ = (
     'DictField',
     'ListField',
     'RawDictField',
-    'RawlistField',
+    'RawListField',
 )
 
 
