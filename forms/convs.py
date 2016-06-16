@@ -112,8 +112,9 @@ class Dict(Converter):
     def from_python(self, python_dict):
         if python_dict is None:
             return None
-        return dict([(name, subfield.from_python(value.get(name))) \
-                        for name, subfield in self.field.named_fields.items()])
+        return {
+            name: subfield.from_python(python_dict.get(name))
+            for name, subfield in self.field.named_fields.items()}
 
 
 class List(Converter):
