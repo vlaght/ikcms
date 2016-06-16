@@ -27,9 +27,9 @@ class Form(OrderedDict):
         for name, field in self.items(keys):
             try:
                 values[name] = field.to_python(
-                                            raw_values.get(name, convs.NOTSET))
+                    raw_values.get(name, convs.NOTSET))
             except validators.ValidationError as e:
-                errors[name] = e.errors
+                errors[name] = e.error
         return values, errors
 
     def from_python(self, values, keys=None):

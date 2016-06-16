@@ -11,11 +11,11 @@ __all__ = (
 
 class ValidationError(Exception):
 
-    def __init__(self, errors):
-        self.errors = errors
+    def __init__(self, error):
+        self.error = error
 
     def __str__(self):
-        return 'ValidationError: {}'.format(self.errors)
+        return 'ValidationError: {}'.format(self.error)
 
 
 class Validator:
@@ -32,12 +32,11 @@ class Validator:
 
 
 class Required(Validator):
-
     required_error = 'required field'
 
     def __init__(self, field):
-        super().__init__(field)
         assert hasattr(field, 'required')
+        super().__init__(field)
         self.required = field.required
 
     def __call__(self, value):
@@ -48,17 +47,15 @@ class Required(Validator):
 
 
 class Regex(Validator):
-
-    regex_error='field should match {validator.regex}'
+    regex_error = 'field should match {validator.regex}'
 
     def __init__(self, field):
-        super().__init__(field)
         assert hasattr(field, 'regex')
+        super().__init__(field)
         self.regex_str = field.regex
         self.regex = field.regex and re.compile(field.regex) or None
 
     def __call__(self, value):
-        print(value)
         if self.regex and not self.regex.match(value):
             self.error('regex_error')
         return value
@@ -97,9 +94,9 @@ class Range(Validator):
         self.max_value = field.max_value
 
     def __call__(self, value):
-        if self.min_value is not None and lvalue < self.min_value:
+        if self.min_value is not None and value < self.min_value:
             self.error('min_value_error')
-        if self.max_value is not None and len(value) > self.max_value:
+        if self.max_value is not None and value > self.max_value:
             self.error('max_value_error')
         return value
 
