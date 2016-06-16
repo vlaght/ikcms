@@ -13,10 +13,18 @@ class Form(OrderedDict):
             assert field.name
             self[field.name] = field(context)
 
-    def to_python(self, raw_values):
+    def items(self, keys=None):
+        items = super().items()
+        if keys is not None:
+            assert not(set(keys) - set(self))
+            items = [(key, value) for key, value in items if key in keys]
+        return items
+
+
+    def to_python(self, raw_values, keys=None):
         values = {}
         errors = {}
-        for name, field in self.items():
+        for name, field in self.items(keys):
             try:
                 values[name] = field.to_python(
                                             raw_values.get(name, convs.NOTSET))
@@ -24,9 +32,9 @@ class Form(OrderedDict):
                 errors[name] = e.errors
         return values, errors
 
-    def from_python(self, raw_values):
-        return [field.from_python(raw_values[name]) \
-                                for name, field in self.items()]
+    def from_python(self, values, keys=None):
+        return dict([(name, field.from_python(values[name])) \
+                                for name, field in self.items(keys)])
 
     def values_to_python(self, raw_values):
         return [self.to_python(raw_value) for raw_value in raw_values]
@@ -36,3 +44,11 @@ class Form(OrderedDict):
 
     def get_cfg(self):
         return [f.widget.to_dict(f) for f in self.values()]
+
+    def get_initials(self):
+        values = {}
+        for name, field in self.items():
+            values[name] = field.get_initials()
+        return values
+
+

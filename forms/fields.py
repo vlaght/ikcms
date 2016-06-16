@@ -47,6 +47,9 @@ class Field:
     def from_python(self, value):
         return self.conv.from_python(value)
 
+    def get_initials(self):
+        return None
+
 
 class StringField(Field):
     conv = convs.Str
