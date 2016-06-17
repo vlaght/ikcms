@@ -203,7 +203,7 @@ def parse_json(raw_message):
 
 
 def from_json(raw_message, messages=None):
-    messsages = messages or INCOMING_MESSAGES
+    messages = messages or INCOMING_MESSAGES
     message = parse_json(raw_message)
     name = message.get('name')
     if not name:
