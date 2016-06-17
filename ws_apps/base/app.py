@@ -13,7 +13,7 @@ class AppBase:
 
     async def __call__(self, server, client_id):
         """ Called when recived message """
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class App(AppBase):
@@ -21,8 +21,8 @@ class App(AppBase):
     messages = messages
 
     def __init__(self, cfg):
+        super().__init__(cfg)
         self.client_envs = {}
-        self.cfg = cfg
         self.cfg.config_uid()
         self.cfg.config_logging()
         self.env_class = self.get_env_class()
@@ -45,7 +45,7 @@ class App(AppBase):
         try:
             while True:
                 try:
-                    raw_message =  await server.recv(client_id)
+                    raw_message = await server.recv(client_id)
                     request = self.messages.from_json(raw_message)
                     handler = self.handlers.get(request['handler'])
                     if not handler:

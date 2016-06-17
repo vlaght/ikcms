@@ -15,21 +15,10 @@ class Environment:
         raw_session_id = "{}.{}.{}".format(time.time(), self._client_id, salt)
         return md5(raw_session_id.encode('utf8')).hexdigest()
 
-    async def send_to(self, clients, name, body=None):
-        for client in clients:
-            message = self.app.messages.Message(name, body)
-            await client._send(message.to_json())
-
-    async def send(self, name, body=None):
-        await self.send_to([self], name, body)
-
-    async def send_to_all(self, name, body=None):
-        await self.send_to(self.app.clients, name, body)
-
     def remote_address(self):
-        return  server.get_remote_address(self._client_id)
+        return self._server.get_remote_address(self._client_id)
 
-    async def _send(self, value):
+    async def send(self, value):
         await self._server.send(self._client_id, value)
 
     async def disconnect(self, code, reason):

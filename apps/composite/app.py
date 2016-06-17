@@ -14,3 +14,7 @@ class App(ikcms.apps.base.App):
     def get_env_class(self):
         from .env import Environment
         return Environment
+
+    def get_handler(self):
+        raise NotImplementedError
+

@@ -61,7 +61,7 @@ class Cfg(object):
         if silent and not os.path.isfile(filepath):
             return
         l = {}
-        execfile(filepath, dict(cfg=self), l)
+        exec(open(filepath).read(), dict(cfg=self), l)
         self.update(l)
         for key, value in l.items():
             setattr(self, key, value)

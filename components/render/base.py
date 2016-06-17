@@ -21,7 +21,7 @@ class BoundTemplate(BaseBoundTemplate):
             self.get_template_vars(context),
         )
 
-    def get_template_vars(self, vars):
+    def get_template_vars(self):
         vs = {'env': self.env}
         if hasattr(self.env, 'get_template_vars'):
             vs.update(self.env.get_template_vars())

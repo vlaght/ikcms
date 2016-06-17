@@ -1,20 +1,17 @@
 import json
 
-from ikcms.forms import (
-    Form,
-    fields,
-    validators,
-    convs,
-)
+from ikcms.forms import Form
+from ikcms.forms import fields
+from ikcms.forms import convs
 
 from . import exc
 
 
 class MessageForm(Form):
 
-    def to_python(self, raw_value):
+    def to_python(self, raw_value, keys=None):
         try:
-            values, errors = super().to_python(raw_value)
+            values, errors = super().to_python(raw_value, keys=keys)
             if errors:
                 raise exc.MessageFieldsError(errors)
         except convs.RawValueTypeError as e:
@@ -92,11 +89,14 @@ class Message(dict):
             mf_body,
         ]
 
-    def __init__(self, body={}):
+    def __init__(self, body=None):
+        body = body or {}
         assert self.name
         assert isinstance(body, dict)
-        self['name'] = self.name
-        self['body'] = body
+        super().__init__(
+            name=self.name,
+            body=body,
+        )
 
     def to_json(self):
         return json.dumps(self)
@@ -114,7 +114,8 @@ class RequestMessage(Message):
             mf_body,
         ]
 
-    def __init__(self, request_id, handler, body={}):
+    def __init__(self, request_id, handler, body=None):
+        body = body or {}
         super().__init__(body)
         self['request_id'] = request_id
         self['handler'] = handler
@@ -132,13 +133,15 @@ class ResponseMessage(Message):
             mf_body,
         ]
 
-    def __init__(self, request_id, handler, body={}):
+    def __init__(self, request_id, handler, body=None):
+        body = body or {}
         super().__init__(body)
         self['request_id'] = request_id
         self['handler'] = handler
 
     @classmethod
-    def from_request(cls, request, body={}):
+    def from_request(cls, request, body=None):
+        body = body or {}
         assert isinstance(request, RequestMessage)
         return cls(
             request_id=request['request_id'],
@@ -199,7 +202,8 @@ def parse_json(raw_message):
     return message
 
 
-def from_json(raw_message, messages=INCOMING_MESSAGES):
+def from_json(raw_message, messages=None):
+    messsages = messages or INCOMING_MESSAGES
     message = parse_json(raw_message)
     name = message.get('name')
     if not name:

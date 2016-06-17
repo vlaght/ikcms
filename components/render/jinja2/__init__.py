@@ -25,7 +25,8 @@ class Jinja2Component(RenderComponent):
         env.globals.update(self.globals)
         return env
 
-    def render(self, template_name, context):
+    def render(self, template_name, context=None):
+        context = context or {}
         return self._env.get_template(template_name).render(**context)
     __call__ = render
 

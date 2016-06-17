@@ -22,6 +22,7 @@ class MessageFieldsError(MessageError):
     errors = {}
 
     def __init__(self, errors):
+        super().__init__()
         self.errors = errors
 
     def __str__(self):

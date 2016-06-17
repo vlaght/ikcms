@@ -11,4 +11,5 @@ class WS_Component(ikcms.components.base.Component):
         setattr(app, self.name, self)
         app.handlers.update(self.handlers())
 
-    def handlers(self): return {}
+    def handlers(self):
+        return {}

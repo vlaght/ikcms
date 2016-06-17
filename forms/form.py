@@ -8,6 +8,7 @@ class Form(OrderedDict):
     fields = []
 
     def __init__(self, **context):
+        super().__init__()
         context.setdefault('form', self)
         for field in self.fields:
             assert field.name
@@ -16,7 +17,7 @@ class Form(OrderedDict):
     def items(self, keys=None):
         items = super().items()
         if keys is not None:
-            assert not(set(keys) - set(self))
+            assert not set(keys) - set(self)
             items = [(key, value) for key, value in items if key in keys]
         return items
 

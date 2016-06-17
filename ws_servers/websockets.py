@@ -1,9 +1,11 @@
 import asyncio
-import websockets
 import urllib.parse
 import logging
 
+import websockets
+
 from .base import ServerBase
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,17 +28,15 @@ class WS_Server(ServerBase):
         asyncio.get_event_loop().run_forever()
 
     async def _new_client(self, websocket, path):
-        logger.debug(
-            'Connected client {}'.format(websocket.remote_address))
+        logger.debug('Connected client %s', websocket.remote_address)
 
         client_id = self.client_id(websocket)
         self.sockets[client_id] = websocket
-        logger.debug('Connected client {}'.format(websocket.remote_address))
+        logger.debug('Connected client %s', websocket.remote_address)
         try:
             await self.app(self, client_id)
         except websockets.exceptions.ConnectionClosed:
-            logger.debug(
-                'Disconnected client {}'.format(websocket.remote_address))
+            logger.debug('Disconnected client %s', websocket.remote_address)
         except:
             await self.disconnect(client_id, 500, 'Internal server error')
             raise
@@ -57,7 +57,7 @@ class WS_Server(ServerBase):
         address = self.get_remote_address(client_id)
         await self.sockets[client_id].close(code, reason)
         del self.sockets[client_id]
-        logger.debug('Disconnected client {}'.format(address))
+        logger.debug('Disconnected client %s', address)
 
     async def ping(self, client_id):
         return self.sockets[client_id].ping()

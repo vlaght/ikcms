@@ -21,6 +21,7 @@ __all__ = [
 class RawValueTypeError(Exception):
 
     def __init__(self, tp, field=''):
+        super().__init__()
         self.tp = tp
         self.field = field
 

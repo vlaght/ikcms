@@ -1,2 +1,3 @@
 from .form import Form
-from . import fields, convs, validators, widgets
+from . import fields, convs, widgets
+from . import validators as vals

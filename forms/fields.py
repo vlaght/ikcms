@@ -1,8 +1,7 @@
 from collections import OrderedDict
-from .convs import ValidationError, RawValueTypeError
 
 from . import convs
-from . import validators
+from . import validators as vals
 from . import widgets
 
 
@@ -54,9 +53,9 @@ class Field:
 class StringField(Field):
     conv = convs.Str
     validators = [
-        validators.Required,
-        validators.Regex,
-        validators.Len,
+        vals.Required,
+        vals.Regex,
+        vals.Len,
     ]
     required = False
     regex = None
@@ -67,8 +66,8 @@ class StringField(Field):
 class IntField(Field):
     conv = convs.Int
     validators = [
-        validators.Required,
-        validators.Range,
+        vals.Required,
+        vals.Range,
     ]
     required = False
     min_value = None
@@ -78,7 +77,7 @@ class IntField(Field):
 class DictField(Field):
     conv = convs.Dict
     validators = [
-        validators.Required,
+        vals.Required,
     ]
     required = False
 
@@ -86,8 +85,8 @@ class DictField(Field):
 class ListField(Field):
     conv = convs.List
     validators = [
-        validators.Required,
-        validators.Len,
+        vals.Required,
+        vals.Len,
     ]
     required = False
     min_len = None

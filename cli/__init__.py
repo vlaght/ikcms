@@ -9,7 +9,7 @@ def add_paths(paths):
 def manage(modules, paths=None):
     paths = paths or []
     add_paths(paths)
-    from iktomi.cli import manage
+    import iktomi.cli
 
     commands = {}
     for module in modules:
@@ -17,4 +17,4 @@ def manage(modules, paths=None):
         for key, value in m.cli_commands.items():
             assert key not in commands, 'Command {} already exists'.format(key)
             commands[key] = value
-    manage(commands)
+    iktomi.cli.manage(commands)
