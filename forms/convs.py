@@ -1,10 +1,9 @@
 from datetime import datetime
-from .validators import ValidationError
+
+from . import exc
 
 
 __all__ = [
-    'RawValueTypeError',
-    'ValidationError',
     'NOTSET',
     'Converter',
     'RawDict',
@@ -16,23 +15,6 @@ __all__ = [
     'Bool',
     'Date',
 ]
-
-
-class RawValueTypeError(Exception):
-
-    def __init__(self, tp, field=''):
-        super().__init__()
-        self.tp = tp
-        self.field = field
-
-    def add_name(self, name):
-        if self.field:
-            self.field = '{}.{}'.format(name, self.field)
-        else:
-            self.field = name
-
-    def __str__(self):
-        return 'Field {} type error: {} required'.format(self.field, self.tp)
 
 
 class NOTSET:
@@ -53,7 +35,7 @@ class Converter:
         if isinstance(raw_value, self.raw_type):
             return raw_value
         else:
-            raise RawValueTypeError(self.raw_type, self.field.name)
+            raise exc.RawValueTypeError(self.raw_type, self.field.name)
 
     def from_python(self, value):
         if value is None:
@@ -62,7 +44,7 @@ class Converter:
 
     def _raw_value_notset(self):
         if self.field.raw_required:
-            raise RawValueTypeError('Required', self.field.name)
+            raise exc.RawValueTypeError('Required', self.field.name)
         return self.field.to_python_default
 
 
@@ -95,27 +77,27 @@ class Dict(Converter):
     raw_type = dict
 
     def to_python(self, raw_dict):
+        raw_dict = super().to_python(raw_dict)
         if raw_dict is None:
             return None
-        values = {}
+        python_dict = {}
         errors = {}
-        for name, subfield in self.field.named_fields.items():
+        for subfield in self.field.fields:
             try:
-                values[name] = subfield.to_python(raw_dict.get(name, NOTSET))
-            except ValidationError as exc:
-                errors[name] = exc.error
-            else:
-                errors[name] = None
-        if any(errors.values()):
-            raise ValidationError(errors)
-        return values
+                python_dict.update(subfield.to_python(raw_dict))
+            except exc.ValidationError as e:
+                errors.update(e.error)
+        if errors:
+            raise exc.ValidationError(errors)
+        return python_dict
 
     def from_python(self, python_dict):
         if python_dict is None:
             return None
-        return {
-            name: subfield.from_python(python_dict.get(name))
-            for name, subfield in self.field.named_fields.items()}
+        raw_dict = {}
+        for subfield in self.field.fields:
+            raw_dict.update(subfield.from_python(python_dict))
+        return raw_dict
 
 
 class List(Converter):
@@ -125,23 +107,24 @@ class List(Converter):
         raw_list = super().to_python(raw_list)
         if raw_list is None:
             return None
-        values = []
+        python_list = []
         errors = []
         for raw_value in raw_list:
             try:
-                values.append(self.field.to_python(raw_value))
-            except ValidationError as exc:
-                errors.append(exc.error)
+                python_list.append(self.field.to_python({None: raw_value})[None])
+            except exc.ValidationError as e:
+                errors.append(e.error[None])
             else:
                 errors.append(None)
         if any(errors):
-            raise ValidationError(errors)
-        return values
+            raise exc.ValidationError(errors)
+        return python_list
 
     def from_python(self, python_list):
         if python_list is None:
             return None
-        return [self.field.from_python(value) for value in python_list]
+        return [self.field.from_python({None: value})[None] \
+                for value in python_list]
 
 
 class Date(Converter):
@@ -154,8 +137,8 @@ class Date(Converter):
             return None
         try:
             return datetime.strptime(raw_value, self.field.format).date()
-        except ValueError as exc:
-            raise ValidationError(self.error_not_valid)
+        except ValueError as e:
+            raise exc.ValidationError(self.error_not_valid)
 
     def from_python(self, python_value):
         if python_value is None:

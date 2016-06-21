@@ -1,8 +1,9 @@
 from collections import OrderedDict
 
 from . import convs
-from . import validators as vals
+from . import validators
 from . import widgets
+from . import exc
 
 
 __all__ = (
@@ -37,14 +38,27 @@ class Field:
         self.conv = self.conv(self)
         self.validators = [v(self) for v in self.validators]
 
-    def to_python(self, raw_value):
-        value = self.conv.to_python(raw_value)
-        for v in self.validators:
-            value = v(value)
-        return value
+    def to_python(self, raw_dict):
+        raw_value = raw_dict.get(self.name, convs.NOTSET)
+        try:
+            python_value = self._to_python(raw_value)
+        except exc.ValidationError as e:
+            raise exc.ValidationError({self.name, e.error})
+        return {self.name: python_value}
 
-    def from_python(self, value):
-        return self.conv.from_python(value)
+    def _to_python(self, raw_value):
+        python_value = self.conv.to_python(raw_value)
+        for v in self.validators:
+            python_value = v(python_value)
+        return python_value
+
+    def from_python(self, python_dict):
+        python_value = python_dict[self.name]
+        raw_value = self._from_python(python_value)
+        return {self.name: raw_value}
+
+    def _from_python(self, python_value):
+        return self.conv.from_python(python_value)
 
     def get_initials(self):
         return None
@@ -53,9 +67,9 @@ class Field:
 class StringField(Field):
     conv = convs.Str
     validators = [
-        vals.Required,
-        vals.Regex,
-        vals.Len,
+        validators.Required,
+        validators.Regex,
+        validators.Len,
     ]
     required = False
     regex = None
@@ -66,8 +80,8 @@ class StringField(Field):
 class IntField(Field):
     conv = convs.Int
     validators = [
-        vals.Required,
-        vals.Range,
+        validators.Required,
+        validators.Range,
     ]
     required = False
     min_value = None
@@ -77,7 +91,7 @@ class IntField(Field):
 class DictField(Field):
     conv = convs.Dict
     validators = [
-        vals.Required,
+        validators.Required,
     ]
     required = False
 
@@ -85,8 +99,8 @@ class DictField(Field):
 class ListField(Field):
     conv = convs.List
     validators = [
-        vals.Required,
-        vals.Len,
+        validators.Required,
+        validators.Len,
     ]
     required = False
     min_len = None

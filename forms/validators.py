@@ -1,7 +1,9 @@
 import re
 
+from . import exc
+
+
 __all__ = (
-    'ValidationError',
     'Validator',
     'Required',
     'Regex',
@@ -9,14 +11,6 @@ __all__ = (
     'Range',
 )
 
-class ValidationError(Exception):
-
-    def __init__(self, error):
-        super().__init__()
-        self.error = error
-
-    def __str__(self):
-        return 'ValidationError: {}'.format(self.error)
 
 
 class Validator:
@@ -29,7 +23,7 @@ class Validator:
 
     def error(self, message_name):
         message = getattr(self.field, message_name, getattr(self, message_name))
-        raise ValidationError(message.format(validator=self))
+        raise exc.ValidationError(message.format(validator=self))
 
 
 class Required(Validator):

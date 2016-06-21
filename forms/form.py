@@ -1,6 +1,7 @@
 from collections import OrderedDict
 
-from . import convs, validators
+from . import exc
+from . import convs
 
 
 class Form(OrderedDict):
@@ -10,32 +11,35 @@ class Form(OrderedDict):
     def __init__(self, **context):
         super().__init__()
         context.setdefault('form', self)
+        self.conv = convs.RawDict(self)
         for field in self.fields:
             assert field.name
             self[field.name] = field(context)
 
-    def items(self, keys=None):
-        items = super().items()
+    def list(self, keys=None):
         if keys is not None:
             assert not set(keys) - set(self)
-            items = [(key, value) for key, value in items if key in keys]
-        return items
-
+            items = [(key, value) for key, value in self.items() if key in keys]
+        else:
+            return self.items()
 
     def to_python(self, raw_values, keys=None):
-        values = {}
+        raw_dict = self.conv.to_python(raw_values)
+        python_dict = {}
         errors = {}
-        for name, field in self.items(keys):
+        for name, field in self.list(keys):
             try:
-                values[name] = field.to_python(
-                    raw_values.get(name, convs.NOTSET))
-            except validators.ValidationError as e:
-                errors[name] = e.error
-        return values, errors
+                python_dict.update(field.to_python(raw_dict))
+            except exc.ValidationError as e:
+                errors.update(e.error)
+        return python_dict, errors
 
-    def from_python(self, values, keys=None):
-        return dict([(name, field.from_python(values[name])) \
-                                for name, field in self.items(keys)])
+    def from_python(self, python_values, keys=None):
+        python_dict = self.conv.to_python(python_values)
+        raw_dict = {}
+        for name, field in self.list(keys):
+            raw_dict.update(field.from_python(python_dict))
+        return raw_dict
 
     def values_to_python(self, raw_values):
         return [self.to_python(raw_value) for raw_value in raw_values]
