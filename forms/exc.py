@@ -25,12 +25,12 @@ class RawValueTypeError(Exception):
         if self.field_name:
             self.field_name = '{}.{}'.format(name, self.field_name)
         else:
-            self.field = name
+            self.field_name = name
 
     def __str__(self):
         if self.field_type:
             return 'Field {} type error: {} required'.format(
-                                            self.field_name, self.field_type)
+                self.field_name, self.field_type)
         else:
             return 'Field {} type error: required'.format(self.field_name)
 

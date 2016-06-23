@@ -51,7 +51,7 @@ class App(AppBase):
                     if not handler:
                         raise exc.HandlerNotAllowed(request['handler'])
                     result = await handler(env, request['body'])
-                    response = self.messages.ResponseMessage.from_request(
+                    response = self.messages.Response.from_request(
                         request, body=result)
                 except exc.BaseError as e:
                     logger.debug(str(e))
@@ -63,7 +63,7 @@ class App(AppBase):
 
     def error_response(self, e, locals):
         request = locals.get('request')
-        return self.messages.ErrorMessage(
+        return self.messages.Error(
             error=e.error,
             message=str(e),
             request_id=request['request_id'],

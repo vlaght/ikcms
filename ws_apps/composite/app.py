@@ -1,6 +1,6 @@
 import ikcms.ws_apps.base
 
-from .exc import ComponentNotFoundError
+from . import exc
 
 
 class App(ikcms.ws_apps.base.App):
@@ -21,5 +21,5 @@ class App(ikcms.ws_apps.base.App):
         for component in self.components:
             if component.name == name:
                 return component
-        raise ComponentNotFoundError(name)
+        raise exc.ComponentNotFoundError(name)
 

@@ -1,92 +1,27 @@
 import json
 
-from ikcms.forms import Form
-from ikcms.forms import fields
-from ikcms.forms import convs
+from .forms import MessageForm
+from .forms import message_fields
 
 from . import exc
 
 
-class MessageForm(Form):
+__all__ = [
+    'Base',
+    'Request',
+    'Response',
+    'Error',
+    'from_json',
+]
 
-    def to_python(self, raw_value, keys=None):
-        try:
-            values, errors = super().to_python(raw_value, keys=keys)
-            if errors:
-                raise exc.MessageFieldsError(errors)
-        except convs.RawValueTypeError as e:
-            raise exc.MessageError(str(e))
-        return values
-
-
-
-class mf_name_required(fields.StringField):
-    name = 'name'
-    label = 'Название сообщения'
-    raw_required = True
-    required = True
-
-
-class mf_body(fields.RawDictField):
-    name = 'body'
-    label = 'Тело сообщения'
-    to_python_default = {}
-
-
-class mf_handler(fields.StringField):
-    name = 'handler'
-    label = 'Название хендлера'
-
-
-class mf_handler_required(mf_handler):
-    raw_required = True
-    required = True
-
-
-class mf_request_id(fields.StringField):
-    name = 'request_id'
-    label = 'Идентификатор запроса'
-
-
-class mf_request_id_required(mf_request_id):
-    raw_required = True
-    required = True
-
-
-class mf_error_required(fields.StringField):
-    name = 'error'
-    label = 'Идентификатор ошибки'
-    raw_required = True
-    required = True
-
-
-class mf_message_required(fields.StringField):
-    name = 'message'
-    label = 'Текстовое сообщение'
-    raw_required = True
-    required = True
-
-
-class mf_body_error_required(mf_body):
-    conv = convs.Dict
-    fields = [
-        mf_error_required,
-        mf_message_required,
-    ]
-    label = 'Teло сообщения об ошибке'
-    raw_required = True
-    required = True
-
-
-
-class Message(dict):
+class Base(dict):
 
     name = None
 
     class Form(MessageForm):
         fields = [
-            mf_name_required,
-            mf_body,
+            message_fields.name__required,
+            message_fields.body,
         ]
 
     def __init__(self, body=None):
@@ -102,16 +37,16 @@ class Message(dict):
         return json.dumps(self)
 
 
-class RequestMessage(Message):
+class Request(Base):
 
     name = 'request'
 
     class Form(MessageForm):
         fields = [
-            mf_name_required,
-            mf_request_id_required,
-            mf_handler_required,
-            mf_body,
+            message_fields.name__required,
+            message_fields.request_id__required,
+            message_fields.handler__required,
+            message_fields.body,
         ]
 
     def __init__(self, request_id, handler, body=None):
@@ -121,17 +56,9 @@ class RequestMessage(Message):
         self['handler'] = handler
 
 
-class ResponseMessage(Message):
+class Response(Base):
 
     name = 'response'
-
-    class Form(MessageForm):
-        fields = [
-            mf_name_required,
-            mf_request_id_required,
-            mf_handler_required,
-            mf_body,
-        ]
 
     def __init__(self, request_id, handler, body=None):
         body = body or {}
@@ -142,7 +69,7 @@ class ResponseMessage(Message):
     @classmethod
     def from_request(cls, request, body=None):
         body = body or {}
-        assert isinstance(request, RequestMessage)
+        assert isinstance(request, Request)
         return cls(
             request_id=request['request_id'],
             handler=request['handler'],
@@ -150,18 +77,17 @@ class ResponseMessage(Message):
         )
 
 
-class ErrorMessage(Message):
+class Error(Base):
 
     name = 'error'
 
     class Form(MessageForm):
         fields = [
-            mf_name_required,
-            mf_request_id,
-            mf_handler,
-            mf_body_error_required,
+            message_fields.name__required,
+            message_fields.request_id,
+            message_fields.handler,
+            message_fields.body__error_required,
         ]
-
 
     def __init__(self, error, message, request_id=None, handler=None):
         super().__init__(dict(
@@ -173,7 +99,7 @@ class ErrorMessage(Message):
 
     @classmethod
     def from_request(cls, request, error, message):
-        assert isinstance(request, RequestMessage)
+        assert isinstance(request, Request)
         return cls(
             error=error,
             message=message,
@@ -183,12 +109,12 @@ class ErrorMessage(Message):
 
 
 INCOMING_MESSAGES = dict([(cls.name, cls) for cls in [
-    RequestMessage,
+    Request,
 ]])
 
 OUTGOING_MESSAGES = dict([(cls.name, cls) for cls in [
-    ResponseMessage,
-    ErrorMessage,
+    Response,
+    Error,
 ]])
 
 

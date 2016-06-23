@@ -97,7 +97,7 @@ class List(Converter):
     raw_type = list
 
     def __init__(self, field):
-        self.field = field
+        super().__init__(field)
         assert len(field.fields)
         assert field.fields[0].name is None
         self.item_field = field.fields[0]

@@ -1,3 +1,14 @@
+from ikcms.forms.exc import RawValueTypeError
+
+
+__all__ = (
+    'BaseError',
+    'MessageError',
+    'MessageFieldsError',
+    'HandlerNotAllowed',
+    'RawValueTypeError',
+)
+
 class BaseError(Exception):
     message = 'Error message'
 
