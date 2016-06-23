@@ -7,17 +7,24 @@ from . import exc
 
 
 __all__ = (
+    'NOTSET',
+    'Base',
     'Field',
-    'StringField',
-    'IntField',
-    'DictField',
-    'ListField',
-    'RawDictField',
-    'RawListField',
+    'String',
+    'Int',
+    'Dict',
+    'List',
+    'RawDict',
+    'RawList',
+    'Block',
 )
 
 
-class Field:
+class NOTSET:
+    pass
+
+
+class Base:
 
     name = None
     label = None
@@ -27,7 +34,7 @@ class Field:
     widget = widgets.Widget()
 
     raw_required = False
-    to_python_default = None
+    to_python_default = NOTSET
 
     def __init__(self, context=None, parent=None):
         self.context = context and context.copy() or {}
@@ -38,33 +45,47 @@ class Field:
         self.conv = self.conv(self)
         self.validators = [v(self) for v in self.validators]
 
-    def to_python(self, raw_dict):
-        raw_value = raw_dict.get(self.name, convs.NOTSET)
-        try:
-            python_value = self._to_python(raw_value)
-        except exc.ValidationError as e:
-            raise exc.ValidationError({self.name, e.error})
-        return {self.name: python_value}
-
-    def _to_python(self, raw_value):
-        python_value = self.conv.to_python(raw_value)
+    def to_python(self, raw_value):
+        if raw_value is NOTSET:
+            python_value = self._raw_value_notset()
+        else:
+            python_value = self.conv.to_python(raw_value)
         for v in self.validators:
             python_value = v(python_value)
         return python_value
 
-    def from_python(self, python_dict):
-        python_value = python_dict[self.name]
-        raw_value = self._from_python(python_value)
-        return {self.name: raw_value}
-
-    def _from_python(self, python_value):
+    def from_python(self, python_value):
         return self.conv.from_python(python_value)
+
+    def _raw_value_notset(self):
+        if self.raw_required:
+            raise exc.RawValueTypeError(None, self.name)
+        return self.to_python_default
 
     def get_initials(self):
         return None
 
 
-class StringField(Field):
+class Field(Base):
+
+    def to_python(self, raw_dict):
+        raw_value = raw_dict.get(self.name, NOTSET)
+        try:
+            python_value = super().to_python(raw_value)
+        except exc.ValidationError as e:
+            raise exc.ValidationError({self.name: e.error})
+        if python_value is NOTSET:
+            return {}
+        else:
+            return {self.name: python_value}
+
+    def from_python(self, python_dict):
+        python_value = python_dict[self.name]
+        raw_value = super().from_python(python_value)
+        return {self.name: raw_value}
+
+
+class String(Field):
     conv = convs.Str
     validators = [
         validators.Required,
@@ -77,7 +98,7 @@ class StringField(Field):
     max_len = None
 
 
-class IntField(Field):
+class Int(Field):
     conv = convs.Int
     validators = [
         validators.Required,
@@ -88,7 +109,7 @@ class IntField(Field):
     max_value = None
 
 
-class DictField(Field):
+class Dict(Field):
     conv = convs.Dict
     validators = [
         validators.Required,
@@ -96,7 +117,7 @@ class DictField(Field):
     required = False
 
 
-class ListField(Field):
+class List(Field):
     conv = convs.List
     validators = [
         validators.Required,
@@ -107,9 +128,34 @@ class ListField(Field):
     max_len = None
 
 
-class RawDictField(Field):
+class RawDict(Field):
     conv = convs.RawDict
 
 
-class RawListField(Field):
+class RawList(Field):
     conv = convs.RawList
+
+
+class Block(Base):
+    conv = convs.Dict
+    validators = [
+        validators.Required,
+    ]
+    required = False
+
+    def to_python(self, raw_dict):
+        raw_value = raw_dict.get(self.name, NOTSET)
+        try:
+            python_value = super().to_python(raw_value)
+        except exc.ValidationError as e:
+            raise exc.ValidationError({self.name: e.error})
+        if python_value is NOTSET:
+            return {}
+        else:
+            return python_value
+
+    def from_python(self, python_dict):
+        raw_value = super().from_python(python_dict)
+        return {self.name: raw_value}
+
+

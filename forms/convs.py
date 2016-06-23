@@ -4,7 +4,6 @@ from . import exc
 
 
 __all__ = [
-    'NOTSET',
     'Converter',
     'RawDict',
     'RawList',
@@ -17,12 +16,8 @@ __all__ = [
 ]
 
 
-class NOTSET:
-    pass
-
-
 class Converter:
-    raw_type = str
+    raw_type = None
 
     def __init__(self, field):
         self.field = field
@@ -30,22 +25,19 @@ class Converter:
     def to_python(self, raw_value):
         if raw_value is None:
             return None
-        if raw_value is NOTSET:
-            return self._raw_value_notset()
-        if isinstance(raw_value, self.raw_type):
-            return raw_value
+        if self.raw_type:
+            if isinstance(raw_value, self.raw_type):
+                return raw_value
+            else:
+                raise exc.RawValueTypeError(self.raw_type, self.field.name)
         else:
-            raise exc.RawValueTypeError(self.raw_type, self.field.name)
+            return raw_value
 
     def from_python(self, value):
         if value is None:
             return None
         return value
 
-    def _raw_value_notset(self):
-        if self.field.raw_required:
-            raise exc.RawValueTypeError('Required', self.field.name)
-        return self.field.to_python_default
 
 
 class RawDict(Converter):
@@ -92,6 +84,7 @@ class Dict(Converter):
         return python_dict
 
     def from_python(self, python_dict):
+        python_dict = super().to_python(python_dict)
         if python_dict is None:
             return None
         raw_dict = {}
@@ -103,6 +96,12 @@ class Dict(Converter):
 class List(Converter):
     raw_type = list
 
+    def __init__(self, field):
+        self.field = field
+        assert len(field.fields)
+        assert field.fields[0].name is None
+        self.item_field = field.fields[0]
+
     def to_python(self, raw_list):
         raw_list = super().to_python(raw_list)
         if raw_list is None:
@@ -111,7 +110,8 @@ class List(Converter):
         errors = []
         for raw_value in raw_list:
             try:
-                python_list.append(self.field.to_python({None: raw_value})[None])
+                python_value = self.item_field.to_python({None: raw_value})[None]
+                python_list.append(python_value)
             except exc.ValidationError as e:
                 errors.append(e.error[None])
             else:
@@ -121,9 +121,10 @@ class List(Converter):
         return python_list
 
     def from_python(self, python_list):
+        python_list = super().from_python(python_list)
         if python_list is None:
             return None
-        return [self.field.from_python({None: value})[None] \
+        return [self.item_field.from_python({None: value})[None] \
                 for value in python_list]
 
 
@@ -144,3 +145,6 @@ class Date(Converter):
         if python_value is None:
             return None
         return python_value.strftime(self.field.format)
+
+
+

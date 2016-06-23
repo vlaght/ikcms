@@ -51,6 +51,8 @@ class Regex(Validator):
         self.regex = field.regex and re.compile(field.regex) or None
 
     def __call__(self, value):
+        if value is None:
+            return value
         if self.regex and not self.regex.match(value):
             self.error('regex_error')
         return value
@@ -69,6 +71,8 @@ class Len(Validator):
         self.max_len = field.max_len
 
     def __call__(self, value):
+        if value is None:
+            return value
         if self.min_len is not None and len(value) < self.min_len:
             self.error('min_len_error')
         if self.max_len is not None and len(value) > self.max_len:
@@ -89,6 +93,8 @@ class Range(Validator):
         self.max_value = field.max_value
 
     def __call__(self, value):
+        if value is None:
+            return None
         if self.min_value is not None and value < self.min_value:
             self.error('min_value_error')
         if self.max_value is not None and value > self.max_value:
