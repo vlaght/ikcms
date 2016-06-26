@@ -1,3 +1,5 @@
+import asyncio
+
 import ikcms.ws_apps.base
 
 from . import exc
@@ -9,7 +11,11 @@ class App(ikcms.ws_apps.base.App):
 
     def __init__(self, cfg):
         super().__init__(cfg)
-        self.components = [x(self) for x in self.components]
+        loop = asyncio.get_event_loop()
+
+        creators = [component.create(self) for component in self.components]
+        results, _ = loop.run_until_complete(asyncio.wait(creators))
+        self.components = [result.result() for result in results]
         for component in self.components:
             component.env_class(self.env_class)
 

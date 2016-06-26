@@ -19,7 +19,7 @@ class Form(OrderedDict):
     def list(self, keys=None):
         if keys is not None:
             assert not set(keys) - set(self)
-            items = [(key, value) for key, value in self.items() if key in keys]
+            return [(key, value) for key, value in self.items() if key in keys]
         else:
             return self.items()
 

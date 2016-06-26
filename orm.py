@@ -42,18 +42,18 @@ class Query:
     def items(self, items):
         return self.clone(items=(self._items or []) + items)
 
-    def execute(self, db):
+    async def execute(self, db):
         if self._items is None:
-            return self._execute_query(db)
+            return await self._execute_query(db)
         else:
-            return self._execute_items(db)
+            return await self._execute_items(db)
 
     __call__ = execute
 
-    def _execute_query(self, db):
+    async def _execute_query(self, db):
         raise NotImplementedError
 
-    def _execute_items(self, db):
+    async def _execute_items(self, db):
         raise NotImplementedError
 
     def filter_by_id(self, *ids):
@@ -115,9 +115,11 @@ class SelectQuery(Query):
     def offset(self, value):
         return self.clone(query=self._query.offset(value))
 
-    def count(self, db):
+    async def count(self, db):
         columns = [func.count(self._mapper.table.c.id)]
-        return db.execute(self._query.with_only_columns(columns)).fetchone()[0]
+        result = await db.execute(self._query.with_only_columns(columns))
+        row = await result.fetchone()
+        return row[0]
 
     def set_keys(self, keys):
         columns = [self._mapper.table.c[key] for key in self._table_keys]
@@ -135,20 +137,26 @@ class SelectQuery(Query):
             raise TypeError(type(key))
         return self.limit(limit).offset(offset)
 
-    def _execute_query(self, db):
-        result = [dict(row) for row in db.execute(self._query)]
-        row_by_id = dict(((row['id'], row) for row in result))
-        ids = [item['id'] for item in result]
+    async def _execute_query(self, db):
+        result =[]
+        for row in await db.execute(self._query):
+            row = dict(row)
+            result.append(row)
+        row_by_id = {row['id']: row for row in result}
+        ids = list(row_by_id)
         for key in self._relation_keys:
-            for id, value in self._mapper.relations[key].load(db, ids).items():
+            rows = await self._mapper.relations[key].load(db, ids)
+            for id, value in rows.items():
                 row_by_id[id][key] = value
         return result
 
-    def _execute_items(self, db):
+    async def _execute_items(self, db):
         assert not [item for item in self._items if 'id' not in item]
         ids = [item['id'] for item in self._items]
         query = self._query.where(self._mapper.table.c.id.in_(ids))
-        result = [dict(row) for row in db.execute(query)]
+        result = []
+        for row in await db.execute(query):
+            result.append(dict(row))
         row_by_id = dict(((row['id'], row) for row in result))
         for item in self._items:
             row = row_by_id.get(item['id'])
@@ -163,17 +171,19 @@ class InsertQuery(Query):
     def set_query(self, query=None):
         self._query = self._mapper.table.insert()
 
-    def _execute_items(self, db):
+    async def _execute_items(self, db):
         for item in self._items:
-            table_value = dict([(key, item[key]) for key in self._table_keys])
-            result = db.execute(self._query.values(**table_value))
+            item.setdefault('id', None)
+            table_value = {key: item[key] for key in self._table_keys}
+            result = await db.execute(self._query.values(**table_value))
             item['id'] = result.lastrowid
             for key in self._relation_keys:
-                self._mapper.relations[key].store(db, item['id'], item[key])
+                relation = self._mapper.relations[key]
+                await relation.store(db, item['id'], item[key])
         return self._items
 
-    def _execute_query(self, db):
-        return db.execute(self._query).rowcount
+    async def _execute_query(self, db):
+        return await db.execute(self._query).rowcount
 
 
 class UpdateQuery(Query):
@@ -184,20 +194,22 @@ class UpdateQuery(Query):
     def values(self, **values):
         return self.clone(query=self._query.values(**values))
 
-    def _execute_items(self, db):
+    async def _execute_items(self, db):
         assert not [item for item in self._items if 'id' not in item]
         for item in self._items:
             query = self._query.where(self._mapper.table.c.id == item['id'])
             value = dict([(key, item[key]) for key in self._table_keys])
-            result = db.execute(query.values(**value))
+            result = await db.execute(query.values(**value))
             if result.rowcount != 1:
                 raise ItemNotFound(item['id'])
             for key in self._relation_keys:
-                self._mapper.relations[key].store(db, item['id'], item[key])
+                relation = self._mapper.relations[key]
+                await relation.store(db, item['id'], item[key])
         return len(self._items)
 
-    def _execute_query(self, db):
-        return db.execute(self._query).rowcount
+    async def _execute_query(self, db):
+        result = await db.execute(self._query)
+        return result.rowcount
 
 
 class DeleteQuery(Query):
@@ -205,17 +217,17 @@ class DeleteQuery(Query):
     def set_query(self, query=None):
         self._query = self._mapper.table.delete()
 
-    def _execute_items(self, db):
+    async def _execute_items(self, db):
         assert not [item for item in self._items if 'id' not in item]
         for item in self._items:
             query = self._query.where(self._mapper.table.c.id == item['id'])
-            result = db.execute(query)
+            result = await db.execute(query)
             if result.rowcount != 1:
                 raise ItemNotFound(item['id'])
         return len(self._items)
 
-    def _execute_query(self, db):
-        return db.execute(self._query).rowcount
+    async def _execute_query(self, db):
+        return (await db.execute(self._query)).rowcount
 
 
 def model_to_mapper(model, mapper_cls):
@@ -285,19 +297,19 @@ class Mapper:
     def delete(self):
         return self.DeleteQuery(self)
 
-    def load(self, db, items, keys=None):
-        return self.select(keys).items(items).execute(db)
+    async def load(self, db, items, keys=None):
+        return await self.select(keys).items(items).execute(db)
 
-    def store(self, db, items, keys=None):
+    async def store(self, db, items, keys=None):
         self.div_keys(keys)  # check keys is allowed
         ids = [item.get('id') for item in items]
         ids = set([id for id in ids if id is not None])
-        result = self.select(['id']).filter_by_id(*ids).execute(db)
+        result = await self.select(['id']).filter_by_id(*ids).execute(db)
         update_ids = set([item['id'] for item in result])
         ins_items = [item for item in items if item.get('id') not in update_ids]
         up_items = [item for item in items if item.get('id') in items]
-        self.insert(keys).items(ins_items).execute(db)
-        self.update(keys).items(up_items).execute(db)
+        await self.insert(keys).items(ins_items).execute(db)
+        await self.update(keys).items(up_items).execute(db)
 
 
 class M2MRelation:
@@ -315,17 +327,18 @@ class M2MRelation:
         self.remote_table = remote_field.table
         self.order_field = order_field
 
-    def load(self, db, ids):
+    async def load(self, db, ids):
         result = {}
-        for id, remote_id in db.execute(self.select_query(ids)):
-            result.setdefault(id, []).append(remote_id)
+        for row in await db.execute(self.select_query(ids)):
+            result.setdefault(row[self.rel_local_field], []).\
+                append(row[self.rel_remote_field])
         return result
 
-    def store(self, db, id, value):
-        db.execute(self.delete_query(id))
+    async def store(self, db, id, value):
+        await db.execute(self.delete_query(id))
         for num, rel_id in enumerate(value):
             order = self.order_field and (num+1) or None
-            db.execute(self.insert_query(id, rel_id, order=order))
+            await db.execute(self.insert_query(id, rel_id, order=order))
 
     def select_query(self, ids):
         s = sql.select([self.rel_local_field, self.rel_remote_field]) \

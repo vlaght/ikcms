@@ -1,66 +1,71 @@
 import logging
 
-from iktomi.db.sqla import multidb_binds
 from iktomi.utils import cached_property
 
-import ikcms.ws_components.db.base
+from . import base
 
 
-class WS_SQLAComponent(ikcms.ws_components.db.base.WS_DBComponent):
 
-    def __init__(self, app):
+async def create_mysql_engine(url, **engine_params):
+    from aiomysql.sa import create_engine
+    kwargs = url.translate_connect_args(
+            database='db',
+            username='user')
+    engine_params.update(kwargs)
+    return await create_engine(**engine_params)
+
+async def create_postgress_engine(url, **engine_params):
+    pass
+
+
+drivers = {
+    'mysql': create_mysql_engine,
+    'postgress': create_postgress_engine,
+}
+
+
+class Component(base.Component):
+
+    drivers = drivers
+
+    def __init__(self, app, engines, models):
         super().__init__(app)
-        self.databases = getattr(self.app.cfg, 'DATABASES', {})
-        self.database_params = getattr(self.app.cfg, 'DATABASE_PARAMS', {})
+        self.engines = engines
+        self.models = models
+        self.binds = self.get_binds()
 
-        self.engines = {}
-        self.binds = {}
-        for db_id, url in self.databases.items():
-            engine = self.create_engine(db_id, url, self.database_params)
-            self.engines[db_id] = engine
-            metadata = self.get_db_models(db_id).metadata
-            for table in metadata.sorted_tables:
-                self.binds[table] = engine
+    @classmethod
+    async def create(cls, app):
+        databases = getattr(app.cfg, 'DATABASES', {})
+        database_params = getattr(app.cfg, 'DATABASE_PARAMS', {})
+        engines = {}
+        for db_id, url in databases.items():
+            engines[db_id] = await cls.create_engine(db_id, url, database_params)
+        models = {db_id: cls.get_models(db_id) for db_id in databases}
+        return cls(app, engines, models)
 
-    def __call__(self, db_id='main'):
-        return self.engines[db_id].begin()
+    @classmethod
+    async def create_engine(cls, db_id, url, engine_params):
+        from sqlalchemy.engine.url import make_url
+        sa_url = make_url(url)
+        assert sa_url.drivername in cls.drivers, \
+            'Unknown db driver {}'.format(sa_url.drivername)
+        return await cls.drivers[sa_url.drivername](sa_url, **engine_params)
 
-    def env_init(self, env):
-        env.db = self
-        env.models = self.env_models
-
-    def env_close(self, env):
-        env.db.close()
-
-    @cached_property
-    def binds(self):
-        return multidb_binds(
-            self.databases,
-            package=self.models,
-            engine_params=self.database_params)
-
-    @cached_property
-    def models(self):
+    @staticmethod
+    def get_models(db_id):
         import models
-        return models
+        return getattr(models, db_id)
 
-    @cached_property
-    def env_models(self):
-        return self.models
+    def get_binds(self):
+        binds = {}
+        for db_id, engine in self.engines.items():
+            for table in self.models[db_id].metadata.sorted_tables:
+                binds[table] = engine
+        return binds
 
-    def create_engine(self, db_id, uri, engine_params):
-        from sqlalchemy import create_engine
-        engine = create_engine(uri, **engine_params)
-        engine.db_id = db_id
-        engine.logger = logging.getLogger('sqlalchemy.engine.[%s]' % db_id)
-        return engine
+    async def __call__(self, db_id):
+        return await self.engines[db_id].acquire()
 
-    def get_db_models(self, db_id):
-        assert db_id in self.databases
-        return getattr(self.models, db_id)
-
-
-
-ws_sqla_component = WS_SQLAComponent.create
-
+sqla = Component.create_cls
 

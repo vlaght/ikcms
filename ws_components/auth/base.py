@@ -25,7 +25,7 @@ def user_required(method):
     return wrapper
 
 
-class WS_AuthComponent(ikcms.ws_components.base.WS_Component):
+class Component(ikcms.ws_components.base.Component):
 
     name = 'auth'
 
@@ -60,3 +60,5 @@ class WS_AuthComponent(ikcms.ws_components.base.WS_Component):
             if perm not in user_perms:
                 return False
         return True
+
+
