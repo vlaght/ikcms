@@ -1,6 +1,6 @@
 import logging
 
-from iktomi.utils import cached_property
+from sqlalchemy.engine.url import make_url
 
 from . import base
 
@@ -46,7 +46,6 @@ class Component(base.Component):
 
     @classmethod
     async def create_engine(cls, db_id, url, engine_params):
-        from sqlalchemy.engine.url import make_url
         sa_url = make_url(url)
         assert sa_url.drivername in cls.drivers, \
             'Unknown db driver {}'.format(sa_url.drivername)
@@ -67,5 +66,6 @@ class Component(base.Component):
     async def __call__(self, db_id):
         return await self.engines[db_id].acquire()
 
-sqla = Component.create_cls
+
+component = Component.create_cls
 

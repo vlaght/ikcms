@@ -1,28 +1,32 @@
 import aioredis
+from . import base
 
 
-class Cache:
+class Component(base.Component):
+
+    DEFAULT_REDIS_HOST = 'localhost'
+    DEFAULT_REDIS_PORT = 6379
+
+    def __init__(self, app, redis):
+        super().__init__(app)
+        self.redis = redis
 
     @classmethod
     async def create(cls, app):
-        host = getattr(app.cfg, 'REDIS_HOST')
-        port = getattr(app.cfg, 'REDIS_PORT')
-        assert host is not None
-        assert port is not None
+        host = getattr(app.cfg, 'REDIS_HOST', cls.DEFAULT_REDIS_HOST)
+        port = getattr(app.cfg, 'REDIS_PORT', cls.DEFAULT_REDIS_PORT)
         address = (host, port)
-        obj = cls()
-        obj.redis = await aioredis.create_redis(address)
-        return obj
+        redis = await aioredis.create_redis(address)
+        return cls(app, redis)
 
     async def get(self, key):
-        assert self.redis is not None
         return await self.redis.get(key)
 
     async def set(self, key, value, expire=0):
-        assert self.redis is not None
         return await self.redis.set(key, value, expire=expire)
 
     async def delete(self, key):
-        assert self.redis is not None
         return await self.redis.delete(key)
 
+
+component = Component.create_cls
