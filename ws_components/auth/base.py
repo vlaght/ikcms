@@ -39,12 +39,6 @@ class Component(ikcms.ws_components.base.Component):
     def h_logout(self, env, message):
         raise NotImplementedError
 
-    def handlers(self):
-        return {
-            'auth.login': self.h_login,
-            'auth.logout': self.h_logout,
-        }
-
     def get_permissions(self, user, permissions):
         user_perms = set(permissions.get(None, []))
         if not user:

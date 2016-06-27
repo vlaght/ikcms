@@ -11,15 +11,20 @@ class Component:
         assert self.name
         assert not hasattr(app, self.name)
         self.app = app
+        self.handlers = self.collect_handlers()
         setattr(app, self.name, self)
-        app.handlers.update(self.handlers())
+        app.handlers.update(self.handlers)
 
     @classmethod
     async def create(cls, app):
         return cls(app)
 
-    def handlers(self):
-        return {}
+    def collect_handlers(self):
+        prefix = lambda name: '{}.{}'.format(self.name, name.split('_')[1])
+        return {
+            prefix(name): getattr(self, name)
+            for name in dir(self) if name.startswith('h_')
+        }
 
     def env_class(self, env_class):
         pass
@@ -33,3 +38,4 @@ class Component:
     @classmethod
     def create_cls(cls, **kwargs):
         return type(cls.__name__, (cls,), kwargs)
+
