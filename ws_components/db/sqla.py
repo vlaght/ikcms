@@ -6,15 +6,15 @@ from . import base
 
 
 
-async def create_mysql_engine(url, **engine_params):
+async def create_mysql_engine(url, engine_params):
     from aiomysql.sa import create_engine
     kwargs = url.translate_connect_args(
             database='db',
             username='user')
-    engine_params.update(kwargs)
-    return await create_engine(**engine_params)
+    kwargs.update(engine_params)
+    return await create_engine(**kwargs)
 
-async def create_postgress_engine(url, **engine_params):
+async def create_postgress_engine(url, engine_params):
     pass
 
 
@@ -49,7 +49,7 @@ class Component(base.Component):
         sa_url = make_url(url)
         assert sa_url.drivername in cls.drivers, \
             'Unknown db driver {}'.format(sa_url.drivername)
-        return await cls.drivers[sa_url.drivername](sa_url, **engine_params)
+        return await cls.drivers[sa_url.drivername](sa_url, engine_params)
 
     @staticmethod
     def get_models(db_id):
@@ -65,6 +65,10 @@ class Component(base.Component):
 
     async def __call__(self, db_id):
         return await self.engines[db_id].acquire()
+
+    def close(self):
+        for engine in self.engines.values():
+            engine.terminate()
 
 
 component = Component.create_cls
