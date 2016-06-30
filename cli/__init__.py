@@ -1,20 +1,24 @@
+import os
 import sys
+import pkgutil
 
-def add_paths(paths):
+
+def manage(paths, app_name='App', cfg_name='Cfg'):
     for path in paths:
-        if path not in sys.path:
-            sys.path.insert(0, path)
+        sys.path.insert(0, os.path.abspath(path))
 
-
-def manage(modules, paths=None):
-    paths = paths or []
-    add_paths(paths)
     import iktomi.cli
+    import iktomi.cli.lazy
 
     commands = {}
-    for module in modules:
-        m = __import__(module)
-        for key, value in m.cli_commands.items():
-            assert key not in commands, 'Command {} already exists'.format(key)
-            commands[key] = value
+
+    for finder, name, is_package in pkgutil.iter_modules('.'):
+        module = finder.find_module(name).load_module(name)
+        app = getattr(module, app_name, None)
+        cfg = getattr(module, cfg_name, None)
+        if app is not None and cfg is not None:
+            for prefix, cli in getattr(app, 'commands', {}).items():
+                # commands[prefix] = {'cli': cli, 'app': app, 'cfg': cfg}
+                commands[prefix] = iktomi.cli.lazy.LazyCli(lambda: cli(app, cfg))
+
     iktomi.cli.manage(commands)
