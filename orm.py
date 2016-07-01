@@ -132,6 +132,12 @@ class Mapper:
             relation = self.relations[key]
             await relation.delete(conn, id, item[key])
 
+    async def count_by_query(self, conn, query):
+        query = query.with_only_columns([sql.func.count(self.table.c.id)])
+        result = await conn.execute(query)
+        row = await result.fetchone()
+        return row[0]
+
 
 class M2MRelation:
 
