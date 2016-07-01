@@ -62,32 +62,15 @@ class Mapper:
         return sql.select([self.table.c.id])
 
     async def select_by_query(self, conn, query, keys=None):
-        ids = []
-        for row in await conn.execute(query):
-            ids.append(row[self.table.c.id])
         return await self.select_by_ids(conn, ids, keys)
 
-    async def select_by_ids(self, conn, ids, keys=None):
-        table_keys, relation_keys = self.div_keys(keys)
-        table_keys.add('id')
-        q = sql.select([self.table.c[key] for key in table_keys])
-        q = q.where(self.table.c.id.in_(ids))
-        item_by_id = {}
-        for row in await conn.execute(q):
-            item = dict(row)
-            item_by_id[row['id']] = item
-
-        items = []
-        for id in ids:
-            if id not in item_by_id:
-                raise ItemNotFound(id)
-            items.append(item_by_id[id])
-        # load relations
-        for key in relation_keys:
-            rows = await self.relations[key].load(conn, ids)
-            for id, value in rows.items():
-                item_by_id[id][key] = value
-        return items
+    async def select(self, conn, ids=None, query=None, keys=None):
+        # load ids from db
+        db_ids = await self._select_ids(conn, ids=ids, query=query)
+        if ids is not None:
+            db_ids = ids
+        # load items form db
+        return  await self._select_items(conn, db_ids, keys=keys)
 
     async def insert(self, conn, item):
         assert set(item).issubset(self.allowed_keys)
@@ -106,13 +89,14 @@ class Mapper:
             await relation.store(conn, id, value)
         return item
 
-    async def update(self, conn, item, keys=None):
+    async def update(self, conn, item, query=None, keys=None):
         assert 'id' in item
         item = item.copy()
         table_keys, relation_keys = self.div_keys(keys)
         table_values = {key: item[key] for key in table_keys}
         relation_values = {key: item[key] for key in relation_keys}
 
+        await self._select_ids(conn, ids=[item['id']], query=query)
         q = sql.update(self.table).values(**table_values)
         q = q.where(self.table.c.id==item['id'])
         result = await conn.execute(q)
@@ -123,8 +107,9 @@ class Mapper:
             await relation.store(conn, item['id'], item[key])
         return item
 
-    async def delete(self, conn, id):
-        q = sql.delete(self.table).where(self.table.c.id==id)
+    async def delete(self, conn, id, query=None):
+        db_ids = await self._select_ids(conn, ids=[id], query=query)
+        q = sql.delete(self.table).where(self.table.c.id==db_ids[0])
         result = await conn.execute(q)
         if result.rowcount != 1:
             raise ItemNotFound(id)
@@ -137,6 +122,41 @@ class Mapper:
         result = await conn.execute(query)
         row = await result.fetchone()
         return row[0]
+
+    async def _select_ids(self, conn, ids=None, query=None):
+         # load ids from db
+        if query is None:
+            query = self.query()
+        if ids:
+            query = query.where(self.table.c.id.in_(ids))
+        db_ids = []
+        for row in await conn.execute(query):
+            db_ids.append(row[self.table.c.id])
+        # all id found check
+        if ids:
+            notfound = set(ids).difference(set(db_ids))
+            if notfound:
+                raise ItemNotFound(*list(notfound))
+        return db_ids
+
+    async def _select_items(self, conn, ids, keys=None):
+        table_keys, relation_keys = self.div_keys(keys)
+        table_keys.add('id')
+        q = sql.select([self.table.c[key] for key in table_keys])
+        item_by_id = {}
+        for row in await conn.execute(q):
+            item_by_id[row['id']] = dict(row)
+        # sort and check items
+        items = [item_by_id[id] for id in ids]
+        notfound = set(ids).difference(set(item_by_id.keys()))
+        if notfound:
+            raise ItemNotFound(*list(notfound))
+        # load relations
+        for key in relation_keys:
+            rows = await self.relations[key].load(conn, ids)
+            for id, value in rows.items():
+                item_by_id[id][key] = value
+        return items
 
 
 class M2MRelation:
