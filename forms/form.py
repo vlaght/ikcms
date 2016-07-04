@@ -50,10 +50,10 @@ class Form(OrderedDict):
     def get_cfg(self):
         return [f.widget.to_dict(f) for f in self.values()]
 
-    def get_initials(self):
+    def get_initials(self, **kwargs):
         values = {}
         for name, field in self.items():
-            values[name] = field.get_initials()
+            values[name] = field.get_initials(**kwargs)
         return values
 
 

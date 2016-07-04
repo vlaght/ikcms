@@ -62,7 +62,7 @@ class Base:
             raise exc.RawValueTypeError(None, self.name)
         return self.to_python_default
 
-    def get_initials(self):
+    def get_initials(self, **kwargs):
         return None
 
 

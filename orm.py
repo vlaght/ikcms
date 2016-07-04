@@ -61,11 +61,7 @@ class Mapper:
     def query(self):
         return sql.select([self.table.c.id])
 
-    async def select_by_query(self, conn, query, keys=None):
-        return await self.select_by_ids(conn, ids, keys)
-
     async def select(self, conn, ids=None, query=None, keys=None):
-        # load ids from db
         db_ids = await self._select_ids(conn, ids=ids, query=query)
         if ids is not None:
             db_ids = ids
@@ -89,22 +85,22 @@ class Mapper:
             await relation.store(conn, id, value)
         return item
 
-    async def update(self, conn, item, query=None, keys=None):
-        assert 'id' in item
+    async def update(self, conn, item_id, item, query=None, keys=None):
         item = item.copy()
         table_keys, relation_keys = self.div_keys(keys)
         table_values = {key: item[key] for key in table_keys}
         relation_values = {key: item[key] for key in relation_keys}
 
-        await self._select_ids(conn, ids=[item['id']], query=query)
+        await self._select_ids(conn, ids=[item_id], query=query)
         q = sql.update(self.table).values(**table_values)
-        q = q.where(self.table.c.id==item['id'])
+        q = q.where(self.table.c.id==item_id)
         result = await conn.execute(q)
         if result.rowcount != 1:
-            raise ItemNotFound(item['id'])
-        for key in self.relation_keys:
+            raise ItemNotFound(item_id)
+        for key, value in relation_values.items():
             relation = self.relations[key]
-            await relation.store(conn, item['id'], item[key])
+            await relation.store(conn, item_id, value)
+        item['id'] = item_id
         return item
 
     async def delete(self, conn, id, query=None):
@@ -115,9 +111,9 @@ class Mapper:
             raise ItemNotFound(id)
         for key in self.relation_keys:
             relation = self.relations[key]
-            await relation.delete(conn, id, item[key])
+            await relation.delete(conn, id)
 
-    async def count_by_query(self, conn, query):
+    async def count(self, conn, query):
         query = query.with_only_columns([sql.func.count(self.table.c.id)])
         result = await conn.execute(query)
         row = await result.fetchone()
@@ -186,6 +182,9 @@ class M2MRelation:
         for num, rel_id in enumerate(value):
             order = self.order_field and (num+1) or None
             await conn.execute(self.insert_query(id, rel_id, order=order))
+
+    async def delete(self, conn, id):
+        await conn.execute(self.delete_query(id))
 
     def select_query(self, ids):
         s = sql.select([self.rel_local_field, self.rel_remote_field]) \
