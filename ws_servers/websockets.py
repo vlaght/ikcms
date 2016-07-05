@@ -14,15 +14,16 @@ class WS_Server(ServerBase):
 
     sockets = {}
 
-    def __init__(self, url, app):
-        self.url = urllib.parse.urlparse(url)
+    def __init__(self, host, port, app):
+        self.host = host
+        self.port = port
         self.app = app
 
     def serve_forever(self):
         start_server = websockets.serve(
             self._new_client,
-            self.url.hostname,
-            self.url.port,
+            self.host,
+            self.port,
         )
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().run_forever()
