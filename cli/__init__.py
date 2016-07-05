@@ -18,7 +18,7 @@ def manage(paths, app_name='App', cfg_name='Cfg'):
         cfg = getattr(module, cfg_name, None)
         if app is not None and cfg is not None:
             for prefix, cli in getattr(app, 'commands', {}).items():
-                # commands[prefix] = {'cli': cli, 'app': app, 'cfg': cfg}
-                commands[prefix] = iktomi.cli.lazy.LazyCli(lambda: cli(app, cfg))
+                commands[prefix] = iktomi.cli.lazy.LazyCli(
+                    lambda cli=cli, app=app, cfg=cfg: cli(app, cfg))
 
     iktomi.cli.manage(commands)
