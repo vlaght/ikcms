@@ -7,7 +7,8 @@ class App(ikcms.apps.base.App):
 
     def __init__(self, cfg):
         super().__init__(cfg)
-        self.components = [component(self) for component in self.components]
+        self.components = [
+            component.create(self) for component in self.components]
         for component in self.components:
             component.env_class(self.env_class)
 

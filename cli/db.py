@@ -8,4 +8,6 @@ class DBCli(Cli):
 
     def __call__(self, *args, **kwargs):
         app = self.create_app(**kwargs)
-        return Sqla(app.db, app.db.models.metadata)(*args, **kwargs)
+        metadata_dict = {db_id: models.metadata \
+            for db_id, models in app.db.models.items()}
+        return Sqla(app.db, metadata_dict)(*args, **kwargs)

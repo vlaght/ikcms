@@ -1,13 +1,13 @@
-from ikcms.components.render.jinja2 import jinja2_component
-from ikcms.components.db.sqla import sqla_component
-from ikcms.apps.composite import App as BaseApp
+import ikcms.components.render.jinja2
+import ikcms.components.db.sqla
+import ikcms.apps.composite
 
 
-class App(BaseApp):
+class App(ikcms.apps.composite.App):
 
     components = [
-        jinja2_component(paths=['{SITE_DIR}/templates']),
-        sqla_component(),
+        ikcms.components.render.jinja2.component(paths=['{SITE_DIR}/templates']),
+        ikcms.components.db.sqla.component(),
     ]
 
     def get_handler(self):

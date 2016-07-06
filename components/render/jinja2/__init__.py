@@ -31,4 +31,4 @@ class Jinja2Component(RenderComponent):
     __call__ = render
 
 
-jinja2_component = Jinja2Component.create
+component = Jinja2Component.create_cls
