@@ -7,7 +7,8 @@ class ItemNotFound(Exception):
     pass
 
 
-def model_to_mapper(model, mapper_cls):
+def model_to_mapper(model, mapper_cls, db_id=None):
+    db_id = db_id or mapper_cls.db_id
     relations = {}
     for name in dir(model):
         attr = getattr(model, name)
@@ -25,7 +26,7 @@ def model_to_mapper(model, mapper_cls):
                     relations[prop.key] = M2MRelation(
                         local1, remote1, remote2, local2
                     )
-    return Mapper(model.__table__, relations)
+    return mapper_cls(model.__table__, relations, db_id=db_id)
 
 
 class Mapper:

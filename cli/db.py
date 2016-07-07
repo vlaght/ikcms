@@ -8,4 +8,4 @@ class DBCli(Cli):
 
     def __call__(self, *args, **kwargs):
         app = self.create_app(**kwargs)
-        return Sqla(app.db, app.db.models.metadata)(*args, **kwargs)
+        return Sqla(app.db, app.db.models.metadata, app.db.models.initialize)(*args, **kwargs)

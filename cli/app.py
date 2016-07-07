@@ -11,6 +11,12 @@ from .base import Cli
 class AppCli(Cli):
     name = 'app'
 
+    def command_fcgi(self, command):
+        assert command in ['start', 'stop', 'restart']
+
+    def command_ws(self, command):
+        assert command in ['start', 'stop', 'restart']
+
     def command_serve(self):
         """
         Run both HTTP and WS servers for development purpouse
@@ -25,7 +31,6 @@ class AppCli(Cli):
             cfg = HTTPCfg()
             cfg.update_from_py()
             app = HTTPApp(cfg)
-
             server = make_server(cfg.HTTP_SERVER_HOST, cfg.HTTP_SERVER_PORT, app)
             server.serve_forever()
 

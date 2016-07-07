@@ -56,6 +56,13 @@ class Component(base.Component):
         import models
         return getattr(models, db_id)
 
+    @property
+    def mappers(self):
+        import models.mappers
+        return {
+            'users': models.mappers.users_mapper,
+        }
+
     def get_binds(self):
         binds = {}
         for db_id, engine in self.engines.items():

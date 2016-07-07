@@ -24,3 +24,6 @@ class Cfg(ikcms.apps.composite.Cfg):
     DATABASES = {'': 'mysql://root@localhost/web?charset=utf8'}
     DATABASE_PARAMS = {}
 
+    @cached_property
+    def MEDIA_DIR(self):
+        return os.path.join(self.ROOT_DIR, 'media')
