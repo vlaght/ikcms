@@ -8,6 +8,10 @@ class Component:
         self.app = app
         setattr(app, self.name, self)
 
+    @classmethod
+    def create(cls, app):
+        return cls(app)
+
     def env_class(self, env_class):
         pass
 
@@ -18,5 +22,5 @@ class Component:
         pass
 
     @classmethod
-    def create(cls, **kwargs):
+    def create_cls(cls, **kwargs):
         return type(cls.__name__, (cls,), kwargs)
