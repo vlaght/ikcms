@@ -47,7 +47,6 @@ class Component(ikcms.ws_components.base.Component):
         else:
             raise exc.InvalidCredentialsError()
         env.user = user
-        print(user)
         return {
             'user': {
                 'login': user['login'],
@@ -83,7 +82,7 @@ class Component(ikcms.ws_components.base.Component):
 
     async def authenticate_by_password(self, app, login, password):
         user = await self.get_user_by_login(app, login)
-        if not user or not check_password(password, user['password']):
+        if user is None or not check_password(password, user['password']):
             raise exc.InvalidPasswordError()
         token = binascii.hexlify(os.urandom(10)).decode('ascii')
         await app.cache.set(token, login)
