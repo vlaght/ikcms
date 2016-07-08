@@ -41,9 +41,9 @@ class Component(ikcms.ws_components.base.Component):
         login = data.get('login', None)
         password = data.get('password', None)
         if token is not None:
-            user, token = await self.authenticate_by_token(env.app, token)
+            user, token = await self.auth_by_token(env.app, token)
         elif login is not None and password is not None:
-            user, token = await self.authenticate_by_password(env.app, login, password)
+            user, token = await self.auth_by_password(env.app, login, password)
         else:
             raise exc.InvalidCredentialsError()
         env.user = user
@@ -64,8 +64,8 @@ class Component(ikcms.ws_components.base.Component):
         Users = app.db.mappers['users']
         query = Users.query()
         query = query.where(Users.table.c.login == login)
-        conn = await app.db(Users.db_id)
-        users = await Users.select(conn, query=query)
+        async with await app.db(Users.db_id) as conn:
+            users = await Users.select(conn, query=query)
         return next(iter(users), None)
 
     async def get_user_by_token(self, app, token):
@@ -74,13 +74,13 @@ class Component(ikcms.ws_components.base.Component):
             return await self.get_user_by_login(app, login)
         return None
 
-    async def authenticate_by_token(self, app, token):
+    async def auth_by_token(self, app, token):
         user = await self.get_user_by_token(app, token)
         if user is None:
             raise exc.InvalidTokenError()
         return user, token
 
-    async def authenticate_by_password(self, app, login, password):
+    async def auth_by_password(self, app, login, password):
         user = await self.get_user_by_login(app, login)
         if user is None or not check_password(password, user['password']):
             raise exc.InvalidPasswordError()

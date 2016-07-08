@@ -71,7 +71,7 @@ class Component(base.Component):
         return binds
 
     async def __call__(self, db_id):
-        return await self.engines[db_id].acquire()
+        return self.engines[db_id].acquire()
 
     def close(self):
         for engine in self.engines.values():
