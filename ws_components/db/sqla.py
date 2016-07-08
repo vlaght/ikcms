@@ -11,7 +11,7 @@ async def create_mysql_engine(url, engine_params):
     kwargs = url.translate_connect_args(
             database='db',
             username='user')
-    kwargs.update(engine_params)
+    kwargs.update(engine_params, **url.query)
     return await create_engine(**kwargs)
 
 async def create_postgress_engine(url, engine_params):
