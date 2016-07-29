@@ -10,7 +10,7 @@ class MessageForm(Form):
             values, errors = super().to_python(raw_value, keys=keys)
             if errors:
                 raise exc.MessageFieldsError(errors)
-        except exc.RawValueTypeError as e:
+        except exc.RawValueError as e:
             raise exc.MessageError(str(e))
         return values
 

@@ -34,6 +34,7 @@ class Base:
     widget = widgets.Widget()
 
     raw_required = False
+    not_none = True
     to_python_default = NOTSET
 
     def __init__(self, context=None, parent=None):
@@ -59,11 +60,12 @@ class Base:
 
     def _raw_value_notset(self):
         if self.raw_required:
-            raise exc.RawValueTypeError(None, self.name)
+            raise exc.RawValueRequiredError(self.name)
         return self.to_python_default
 
     def get_initials(self, **kwargs):
         return None
+
 
 
 class Field(Base):

@@ -14,11 +14,13 @@ class ValidationError(Exception):
         return 'ValidationError: {}'.format(self.error)
 
 
-class RawValueTypeError(Exception):
+class RawValueError(Exception):
 
-    def __init__(self, field_type, field_name=''):
+    message = None
+
+    def __init__(self, field_name):
+        assert self.message
         super().__init__()
-        self.field_type = field_type
         self.field_name = field_name
 
     def add_name(self, name):
@@ -28,9 +30,28 @@ class RawValueTypeError(Exception):
             self.field_name = name
 
     def __str__(self):
-        if self.field_type:
-            return 'Field {} type error: {} required'.format(
-                self.field_name, self.field_type)
-        else:
-            return 'Field {} type error: required'.format(self.field_name)
+        return 'Field {} error: {}'.format(self.field_name, self.message)
+
+
+class RawValueRequiredError(RawValueError):
+
+    message = 'Field required'
+
+
+class RawValueNoneNotAllowedError(RawValueError):
+
+    message = 'None value not allowed'
+
+
+class RawValueTypeError(RawValueError):
+
+    message = 'Required type={}'
+
+    def __init__(self, field_name, field_type):
+        super().__init__(field_name)
+        self.field_type = field_type
+
+    def __str__(self):
+        message = self.message.format(self.field_type)
+        return 'Field {} type error: {}'.format(self.field_name, message)
 

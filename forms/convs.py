@@ -24,17 +24,20 @@ class Converter:
 
     def to_python(self, raw_value):
         if raw_value is None:
+            if self.field.not_none:
+                raise exc.RawValueNoneNotAllowedError(self.field.name)
             return None
         if self.raw_type:
             if isinstance(raw_value, self.raw_type):
                 return raw_value
             else:
-                raise exc.RawValueTypeError(self.raw_type, self.field.name)
+                raise exc.RawValueTypeError(self.field.name, self.raw_type)
         else:
             return raw_value
 
     def from_python(self, value):
         if value is None:
+            assert not self.field.not_none, 'None value not allowed'
             return None
         return value
 
@@ -84,7 +87,7 @@ class Dict(Converter):
         return python_dict
 
     def from_python(self, python_dict):
-        python_dict = super().to_python(python_dict)
+        python_dict = super().from_python(python_dict)
         if python_dict is None:
             return None
         raw_dict = {}
@@ -142,6 +145,7 @@ class Date(Converter):
             raise exc.ValidationError(self.error_not_valid)
 
     def from_python(self, python_value):
+        python_value = super().from_python(python_value)
         if python_value is None:
             return None
         return python_value.strftime(self.field.format)
