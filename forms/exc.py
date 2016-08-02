@@ -72,3 +72,21 @@ class PythonValueRequiredError(PythonValueError):
     message = 'Field required'
 
 
+class PythonValueNoneNotAllowedError(PythonValueError):
+
+    message = 'None value not allowed'
+
+
+class PythonValueTypeError(PythonValueError):
+
+    message = 'Required type="{}"'
+
+    def __init__(self, field_name, field_type):
+        super().__init__(field_name)
+        self.field_type = field_type
+
+    def __str__(self):
+        message = self.message.format(self.field_type)
+        return 'Field "{}" type error: {}'.format(self.field_name, message)
+
+

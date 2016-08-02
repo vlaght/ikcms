@@ -114,6 +114,10 @@ class Int(Field):
     max_value = None
 
 
+class IntStr(Int):
+    conv = convs.IntStr
+
+
 class Dict(Field):
     conv = convs.Dict
     validators = [

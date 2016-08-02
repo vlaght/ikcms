@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from . import exc
 
@@ -11,6 +11,7 @@ __all__ = [
     'List',
     'Str',
     'Int',
+    'IntStr',
     'Bool',
     'Date',
 ]
@@ -18,6 +19,7 @@ __all__ = [
 
 class Converter:
     raw_type = None
+    python_type = None
 
     def __init__(self, field):
         self.field = field
@@ -35,41 +37,71 @@ class Converter:
         else:
             return raw_value
 
-    def from_python(self, value):
-        if value is None:
-            assert not self.field.not_none, 'None value not allowed'
+    def from_python(self, python_value):
+        if python_value is None:
+            if self.field.not_none:
+                raise exc.PythonValueNoneNotAllowedError(self.field.name)
             return None
-        return value
+        if self.python_type:
+            if isinstance(python_value, self.python_type):
+                return python_value
+            else:
+                raise exc.PythonValueTypeError(self.field.name, self.python_type)
+        else:
+            return python_value
+
 
 
 
 class RawDict(Converter):
     raw_type = dict
-    error_not_valid = 'Not a valid dict'
+    python_type = dict
 
 
 class RawList(Converter):
     raw_type = list
-    error_not_valid = 'Not a valid list'
+    python_type = list
 
 
 class Str(Converter):
     raw_type = str
-    error_not_valid = 'Not a valid string'
+    python_type = str
 
 
 class Int(Converter):
     raw_type = int
+    python_type = int
+
+
+class IntStr(Converter):
+    raw_type = str
+    python_type = int
     error_not_valid = 'Not a valid integer'
+
+    def to_python(self, raw_value):
+        raw_value = super().to_python(raw_value)
+        if raw_value is None:
+            return None
+        try:
+            return int(raw_value)
+        except ValueError:
+            raise exc.ValidationError(self.error_not_valid)
+
+    def from_python(self, value):
+        value = super().from_python(value)
+        if value is None:
+            return value
+        return str(value)
 
 
 class Bool(Converter):
     raw_type = bool
-    error_not_valid = 'Not a valid boolean'
+    python_type = bool
 
 
 class Dict(Converter):
     raw_type = dict
+    python_type = dict
 
     def to_python(self, raw_dict):
         raw_dict = super().to_python(raw_dict)
@@ -98,6 +130,7 @@ class Dict(Converter):
 
 class List(Converter):
     raw_type = list
+    python_type = list
 
     def __init__(self, field):
         super().__init__(field)
@@ -133,6 +166,7 @@ class List(Converter):
 
 class Date(Converter):
     raw_type = str
+    python_type = date
     error_not_valid = 'Not a valid date'
 
     def to_python(self, raw_value):
