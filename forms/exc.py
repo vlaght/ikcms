@@ -14,7 +14,8 @@ class ValidationError(Exception):
         return 'ValidationError: {}'.format(self.error)
 
 
-class RawValueError(Exception):
+
+class BaseValueError(Exception):
 
     message = None
 
@@ -30,7 +31,12 @@ class RawValueError(Exception):
             self.field_name = name
 
     def __str__(self):
-        return 'Field {} error: {}'.format(self.field_name, self.message)
+        return 'Field "{}" error: {}'.format(self.field_name, self.message)
+
+
+class RawValueError(BaseValueError):
+
+    pass
 
 
 class RawValueRequiredError(RawValueError):
@@ -45,7 +51,7 @@ class RawValueNoneNotAllowedError(RawValueError):
 
 class RawValueTypeError(RawValueError):
 
-    message = 'Required type={}'
+    message = 'Required type="{}"'
 
     def __init__(self, field_name, field_type):
         super().__init__(field_name)
@@ -53,5 +59,16 @@ class RawValueTypeError(RawValueError):
 
     def __str__(self):
         message = self.message.format(self.field_type)
-        return 'Field {} type error: {}'.format(self.field_name, message)
+        return 'Field "{}" type error: {}'.format(self.field_name, message)
+
+
+class PythonValueError(BaseValueError):
+
+    pass
+
+
+class PythonValueRequiredError(PythonValueError):
+
+    message = 'Field required'
+
 

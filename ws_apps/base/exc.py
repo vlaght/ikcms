@@ -9,6 +9,7 @@ __all__ = (
     'RawValueError',
 )
 
+
 class BaseError(Exception):
     message = 'Error message'
 

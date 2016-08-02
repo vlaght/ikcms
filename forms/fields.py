@@ -17,6 +17,7 @@ __all__ = (
     'RawDict',
     'RawList',
     'Block',
+    'Date',
 )
 
 
@@ -33,7 +34,7 @@ class Base:
     validators = ()
     widget = widgets.Widget()
 
-    raw_required = False
+    raw_required = True
     not_none = True
     to_python_default = NOTSET
 
@@ -56,6 +57,8 @@ class Base:
         return python_value
 
     def from_python(self, python_value):
+        if python_value is NOTSET:
+            raise exc.PythonValueRequiredError(self.name)
         return self.conv.from_python(python_value)
 
     def _raw_value_notset(self):
@@ -82,7 +85,7 @@ class Field(Base):
             return {self.name: python_value}
 
     def from_python(self, python_dict):
-        python_value = python_dict[self.name]
+        python_value = python_dict.get(self.name, NOTSET)
         raw_value = super().from_python(python_value)
         return {self.name: raw_value}
 
@@ -161,3 +164,6 @@ class Block(Base):
         return {self.name: raw_value}
 
 
+class Date(Field):
+    conv = convs.Date
+    format = "%Y-%m-%d"
