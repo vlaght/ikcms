@@ -1,81 +1,23 @@
-from sqlalchemy.orm.attributes import InstrumentedAttribute
-from sqlalchemy.orm import ColumnProperty
-from sqlalchemy.orm import RelationshipProperty
-from sqlalchemy import sql
-from sqlalchemy.sql.base import _generative
-from sqlalchemy import func
+import sqlalchemy as sa
+from iktomi.utils import cached_property
 
+from .query import Query, PubQuery
 from . import exc
 
 
 __all__ = [
     'Registry',
-    'InternalCore',
-    'InternalI18n',
-    'InternalPublication',
+    'CoreImpl',
+    'I18nImpl',
+    'PubImpl',
     'Core',
+    'I18nMixin',
+    'PublicationMixin',
+    'Base',
     'I18n',
-    'Publication',
-    'Mapper',
-    'I18nMapper',
-    'PubMapper',
-    'I18nPubMapper',
+    'Pub',
+    'I18nPub',
 ]
-
-class Query(sql.Select):
-
-    def __init__(self, mapper, *args, **kwargs):
-        self.mapper = mapper
-        super().__init__([self.mapper.c['id']], *args, **kwargs)
-
-    def id(self, *ids):
-        if len(ids) == 1:
-            return self.where(self.mapper.c['id']==ids[0])
-        else:
-            return self.where(self.mapper.c['id'].in_(ids))
-
-    def filter_by(self, **kwargs):
-        q = self
-        for key, value in kwargs.items():
-            q = q.where(self.mapper.c[key]==value)
-        return q
-
-    async def select_items(self, session, keys=None):
-        return await self.mapper.select_items(
-            session,
-            self,
-            keys=keys,
-        )
-
-    async def insert_item(self, session, values, keys=None):
-        return await self.mapper.insert_item(
-                session,
-                self,
-                values=values,
-                keys=keys,
-        )
-
-    async def update_item(self, session, item_id, values, keys=None):
-        return await self.mapper.update_item(
-            session,
-            self,
-            item_id=item_id,
-            values=values,
-            keys=keys,
-        )
-
-    async def delete_item(self, session, item_id):
-        return await self.mapper.delete_item(
-                session,
-                self,
-                item_id,
-        )
-
-    async def count_items(self, session):
-        return await self.mapper.count_items(
-            session,
-            self,
-        )
 
 
 class Registry(dict):
@@ -84,14 +26,24 @@ class Registry(dict):
         self.metadata = metadata
         for key in metadata:
             self[key] = {}
+        self.create_schema_mappers = []
+
+    def create_schema(self):
+        mappers = []
+        for mapper in self.create_schema_mappers:
+            mapper.create_table()
+
+        for mapper in self.create_schema_mappers:
+            for relation in mapper.relations.values():
+                relation.create_tables()
 
 
-class InternalBase:
+class BaseImpl:
 
     async def select_items(self, session, query, keys=None):
         raise NotImplementedError
 
-    async def insert_item(self, session, query, values, keys=None):
+    async def insert_item(self, session, values, keys=None):
         raise NotImplementedError
 
     async def update_item(self, session, query, item_id, values, keys=None):
@@ -105,18 +57,14 @@ class InternalBase:
 
 
 
-class InternalCore(InternalBase):
+class CoreImpl(BaseImpl):
 
-    def __init__(self, mappers, name, table, relations, db_id):
-        self.mappers = mappers
-        self.name = name
+    def __init__(self, table, relations):
         self.table = table
         self.relations = relations
-        self.db_id = db_id
         self.c = dict(self.table.c, **self.relations)
-        self.table_keys = self.get_table_keys()
-        self.relation_keys = self.get_relation_keys()
-        assert not self.table_keys.intersection(self.relation_keys)
+        self.table_keys = set(self.table.c.keys())
+        self.relation_keys = set(self.relations.keys())
         self.allowed_keys = self.table_keys.union(self.relation_keys)
 
     def div_keys(self, keys=None):
@@ -130,12 +78,6 @@ class InternalCore(InternalBase):
         relation_keys = keys.intersection(self.relation_keys)
         return table_keys, relation_keys
 
-    def get_table_keys(self):
-        return set(self.table.c.keys())
-
-    def get_relation_keys(self):
-        return set(self.relations.keys())
-
     async def select_items(self, session, query, keys=None):
         ids = await self._select_ids(session, query)
         if ids:
@@ -143,16 +85,20 @@ class InternalCore(InternalBase):
         else:
             return []
 
-    async def insert_item(self, session, query, values, keys=None):
+    async def insert_item(self, session, values, keys=None):
         keys = keys or list(values.keys())
-        assert set(keys).issubset(self.allowed_keys)
+        assert set(keys).issubset(self.allowed_keys), \
+            'Keys {} not allowed. Allowed keys={}'.format(
+                set(keys).difference(self.allowed_keys), self.allowed_keys)
         table_keys, relation_keys = self.div_keys(keys)
         table_values = {key: values[key] for key in table_keys}
         relation_values = {key: values[key] for key in relation_keys}
 
-        query = sql.insert(self.table).values([table_values])
+        query = sa.sql.insert(self.table).values([table_values])
         result = await session.execute(query)
-        item = dict(values, id=result.lastrowid)
+        item = dict(values)
+        if values.get('id') is None:
+            item['id'] = result.lastrowid
         # store relations
         for key in relation_keys:
             await self.relations[key].store(session, [item])
@@ -164,7 +110,7 @@ class InternalCore(InternalBase):
         table_values = {key: values[key] for key in table_keys}
         relation_values = {key: values[key] for key in relation_keys}
         await self._exists_check(session, query, item_id)
-        query = sql.update(self.table).values(**table_values)
+        query = sa.sql.update(self.table).values(**table_values)
         query = query.where(self.c['id']==item_id)
         result = await session.execute(query)
         item_id = values.get('id', item_id)
@@ -174,13 +120,16 @@ class InternalCore(InternalBase):
 
     async def delete_item(self, session, query, item_id):
         await self._exists_check(session, query, item_id)
-        query = sql.delete(self.table).where(self.c['id']==item_id)
+        await self.delete_item_by_id(session, item_id)
+
+    async def delete_item_by_id(self, session, item_id):
+        query = sa.sql.delete(self.table).where(self.c['id']==item_id)
         for key in self.relation_keys:
             await self.relations[key].delete(session, item_id)
         await session.execute(query)
 
     async def count_items(self, session, query):
-        query = query.with_only_columns([sql.func.count(self.c['id'])])
+        query = query.with_only_columns([sa.func.count(self.c['id'])])
         result = await session.execute(query)
         row = await result.fetchone()
         return row[0]
@@ -192,7 +141,7 @@ class InternalCore(InternalBase):
     async def _load_items(self, session, ids, keys=None):
         table_keys, relation_keys = self.div_keys(keys)
         table_keys.add('id')
-        query = sql.select([self.c[key] for key in table_keys])
+        query = sa.sql.select([self.c[key] for key in table_keys])
         if len(ids) == 1:
             query = query.where(self.c['id']==ids[0])
         else:
@@ -215,203 +164,477 @@ class InternalCore(InternalBase):
 
 
 
-class InternalI18n(InternalBase):
+class I18nImpl(BaseImpl):
 
-    def __init__(self, langs, internal_mappers, lang):
-        assert len(internal_mappers) == len(langs)
+    STATE_NORMAL = 'normal'
+    STATE_ABSENT = 'absent'
+
+    def __init__(self, langs, mappers, lang, child_impl,
+            common_keys=None, STATE_NORMAL=None, STATE_ABSENT=None):
+        assert len(langs) == len(mappers)
         assert lang in langs
         self.langs = langs
-        self.internal_mappers = dict(zip(langs, internal_mappers))
+        self.mappers = dict(zip(langs, mappers))
         self.lang = lang
-        self.internal = self.internal_mappers[lang]
+        self.child_impl = child_impl
+        self.common_keys = set(common_keys) or set()
+        self.STATE_NORMAL = STATE_NORMAL or self.STATE_NORMAL
+        self.STATE_ABSENT = STATE_ABSENT or self.STATE_ABSENT
 
-    async def select_items(self, session, query,keys=None):
-        return await self.internal.select_items(session, query, keys=keys)
+    async def select_items(self, session, query, keys=None):
+        return await self.child_impl.select_items(session, query, keys=keys)
 
-    async def insert_item(self, session, query, values, keys=None):
+    async def insert_item(self, session, values, keys=None):
+        results = {}
+        values = dict(values)
         for lang in self.langs:
-            await self.internal_mappers[lang].insert_item(
-                session, query, values, keys=keys)
+            mapper = self.mappers[lang]
+            if lang == self.lang:
+                lang_values = dict(values)
+                self.set_normal_state(lang_values)
+                lang_keys = keys
+            else:
+                lang_values = dict(values)
+                self.set_absent_state(lang_values)
+                lang_keys = set(self.common_keys).union({'id', 'state'})
+            impl = mapper.i18n_impl.child_impl
+            results[lang] = await impl.insert_item(
+                session, lang_values, keys=lang_keys)
+            values['id'] = results[lang]['id']
+        return results[self.lang]
+
 
     async def update_item(self, session, query, item_id, values, keys=None):
-        return await self.internal.update_item(
-            session, query, item_id, values, keys=None)
+        assert 'id' not in values or values['id'] == item_id,\
+            'Changing item_id not permitted'
+        if keys is None:
+            common_keys = self.common_keys
+        else:
+            common_keys = self.common_keys.intersection(keys)
+        for lang in self.langs:
+            mapper = self.mappers[lang]
+            update_item = mapper.i18n_impl.child_impl.update_item
+            if lang==self.lang:
+                result = await update_item(session, query, item_id, values, keys)
+            else:
+                await update_item(
+                    session,
+                    mapper.i18n_base_query(),
+                    item_id,
+                    values,
+                    common_keys,
+                )
+        return result
 
     async def delete_item(self, session, query, item_id):
-        for lang in self.langs:
-            await self.internal_mappers[lang].delete_item(
-                session, query, item_id)
+        await self.child_impl._exists_check(session, query, item_id) #XXX
+        for lang in self.langs[::-1]:
+            mapper = self.mappers[lang]
+            impl = mapper.i18n_impl.child_impl
+            await impl.delete_item(session, mapper.i18n_base_query(), item_id)
+
 
     async def count_items(self, session, query):
-        return await self.internal.count_items(session, query)
+        return await self.child_impl.count_items(session, query)
+
+    def set_normal_state(self, values):
+        values['state'] = self.STATE_NORMAL
+
+    def set_absent_state(self, values):
+        values['state'] = self.STATE_ABSENT
+
+    async def get_version(self, session, item_id, keys=None):
+        query = self.mappers[self.lang].i18n_base_query().id(item_id)
+        items = await query.select_items(session, keys)
+        return items[0]
+
+    async def create_version(self, session, item_id):
+        mapper = self.mappers[self.lang]
+        query = mapper.absent_query()
+        values = {}
+        self.set_normal_state(values)
+        items = await mapper.i18n_impl.child_impl.update_item(
+            session, query, item_id, values, keys=['state'])
 
 
-class InternalPublication(InternalBase):
+class PubImpl(BaseImpl):
 
-    def __init__(self, db_ids, internal_mappers, db_id):
-        assert len(db_ids) == len(internal_mappers) == 2
+    state_private = 'private'
+    state_public = 'public'
+
+    def __init__(self, db_ids, mappers, db_id, child_impl):
+        assert len(db_ids) == len(mappers) == 2
         assert db_id in db_ids
-        self.db_ids = db_ids
-        self.internal_mappers = dict(zip(db_ids, internal_mappers))
+        self.mappers = dict(zip(db_ids, mappers))
+        self.db_ids =db_ids
         self.db_id = db_id
-        self.internal = self.internal_mappers[db_id]
+        self.child_impl = child_impl
 
     async def select_items(self, session, query,keys=None):
-        return await self.internal.select_items(session, query, keys=keys)
+        return await self.child_impl.select_items(session, query, keys=keys)
 
-    async def insert_item(self, session, query, values, keys=None):
-        for db_id in [self.src_db_id, self.dest_db_id]:
-            await self.internal_mappers[db_id].insert_item(
-                session, query, values, keys=keys)
+    async def insert_item(self, session, values, keys=None):
+        values = dict(values)
+        impl = self.mappers[self.db_ids[0]].pub_impl.child_impl
+        self.set_private_state(values)
+        item = await impl.insert_item(session, values, keys=keys)
+        values = {'id': item['id']}
+        self.set_private_state(values)
+        impl = self.mappers[self.db_ids[1]].pub_impl.child_impl
+        await impl.insert_item(session, values, keys={'id', 'state'})
+        return item
 
     async def update_item(self, session, query, item_id, values, keys=None):
-        return await self.internal.update_item(
+        return await self.child_impl.update_item(
             session, query, item_id, values, keys=None)
 
     async def delete_item(self, session, query, item_id):
-        for lang in self.langs:
-            await self.internal_mappers[lang].delete_item(
-                session, query, item_id)
+        await self.child_impl._exists_check(session, query, item_id) #XXX
+        for db_id in self.db_ids:
+            mapper = self.mappers[db_id]
+            await mapper.pub_impl.child_impl.delete_item(
+                session, mapper.pub_base_query(), item_id)
 
     async def count_items(self, session, query):
-        return await self.internal.count_items(session, query)
+        return await self.child_impl.count_items(session, query)
 
     async def publish(self, session, query, item_id):
-        pass
+        assert self.db_id == self.db_ids[0]
+        await self.child_impl._exists_check(session, query, item_id) #XXX
+        admin_mapper = self.mappers[self.db_ids[0]]
+        items = await admin_mapper.select_items(session, query)
+        values = {}
+        self.set_public_state(values)
+        await admin_mapper.update_item(session, query, item_id, values)
+        values = items[0]
+        self.set_public_state(values)
+        front_mapper = self.mappers[self.db_ids[1]]
+        await front_mapper.update_item(
+            session,
+            front_mapper.query(),
+            item_id,
+            values,
+        )
 
+    def set_private_state(self, values):
+        values['state'] = self.state_private
+
+    def set_public_state(self, values):
+        values['state'] = self.state_public
 
 
 class Core:
 
-    internal_core_class = InternalCore
-    internal_core_props = [
-        'db_id',
-        'table',
-        'relations',
-        'table_keys',
-        'relation_keys',
-        'c',
-        'div_keys',
-        'allowed_keys',
-        'select_items',
-        'insert_item',
-        'update_item',
-        'delete_item',
-        'count_items',
-    ]
+    core_impl_class = CoreImpl
     name = None
     query_class = Query
 
-    def __init__(self, registry, internal):
+    def __init__(self, registry, db_id):
         assert self.name
         self.registry = registry
-        self.internal_core = internal
-        for prop in self.internal_core_props:
-            setattr(self, prop, getattr(internal, prop))
+        self.db_id = db_id
+
+    def get_mapper(self, **kwargs):
+        db_id = kwargs.get('db_id', self.db_id)
+        name = kwargs.get('name', self.name)
+        return self.registry[db_id][name]
 
     def query(self):
         return self.query_class(self)
 
-    @classmethod
-    def create_table(cls, registry, **kwargs):
-        raise NotImplementedError
+    #schema
+    @cached_property
+    def table(self):
+        return self.registry.metadata[self.db_id].tables[self.tablename]
 
-    @classmethod
-    def create_relations(cls, registry, **kwargs):
+    @cached_property
+    def relations(self):
+        return self.create_relations()
+
+    @property
+    def tablename(self):
+        return self.name
+
+    def create_table(self):
+        return sa.Table(
+            self.tablename,
+            self.registry.metadata[self.db_id],
+            *(self.create_system_columns() + self.create_columns())
+        )
+
+    def create_id_column(self):
+        return sa.Column('id', sa.Integer, primary_key=True, autoincrement=True)
+
+    def create_system_columns(self):
+        return [self.create_id_column()]
+
+    def create_columns(self):
+        return []
+
+    def create_relations(self):
         return {}
 
+    # core impl
+    @cached_property
+    def core_impl(self):
+        return self.core_impl_class(self.table, self.relations)
+
+    @property
+    def impl(self):
+        return self.core_impl
+
+    @property
+    def c(self):
+        return self.core_impl.c
+
+    @property
+    def table_keys(self):
+        return self.core_impl.table_keys
+
+    @property
+    def relation_keys(self):
+        return self.core_impl.relation_keys
+
+    @property
+    def allowed_keys(self):
+        return self.core_impl.allowed_keys
+
+    def div_keys(self, keys=None):
+        return self.core_impl.div_keys(keys)
+
+    async def select_items(self, session, query, keys=None):
+        return await self.impl.select_items(session, query, keys)
+
+    async def insert_item(self, session, values, keys=None):
+        return await self.impl.insert_item(session, values, keys)
+
+    async def update_item(self, session, query, item_id, values, keys=None):
+        return await self.impl.update_item(
+            session, query, item_id, values, keys)
+
+    async def delete_item(self, session, query, item_id):
+        return await self.impl.delete_item(session, query, item_id)
+
+    async def count_items(self, session, query):
+        return await self.impl.count_items(session, query)
+
+    #factory
     @classmethod
-    def create_internals(cls, registry, **kwargs):
-        table = cls.create_table(registry, **kwargs)
-        relations = cls.create_relations(registry, **kwargs)
-        return [cls.internal_core_class(
-            registry,
-            cls.name,
-            table,
-            relations,
-            kwargs['db_id'],
-        )]
+    def create_mappers(cls, registry, **kwargs):
+        return [cls(registry, **kwargs)]
 
     @classmethod
-    def register_mappers(cls, registry, mappers):
+    def register_mappers(cls, registry, mappers, create_schema=True):
         for mapper in mappers:
             registry[mapper.db_id][mapper.name] = mapper
+            if create_schema:
+                registry.create_schema_mappers.append(mapper)
 
     @classmethod
-    def create(cls, registry, **kwargs):
-        internals = cls.create_internals(registry, **kwargs)
-        mappers = [cls(registry, internal) for internal in internals]
-        cls.register_mappers(registry, mappers)
+    def create(cls, registry, create_schema=True, **kwargs):
+        mappers = cls.create_mappers(registry, **kwargs)
+        cls.register_mappers(registry, mappers, create_schema)
+        return mappers
 
     @classmethod
-    def from_model(cls, registry, name, models):
-        mapper_cls = type('ModelMapper', (cls,), {
-            'name': name,
-            'create_table': classmethod(lambda cls, registry, **kwargs: \
-                get_model_table(kwargs['model'])
-            ),
-            'create_relations': classmethod(lambda cls, registry, **kwargs: \
-                get_model_relations(kwargs['model'])
-            ),
-
-        })
+    def from_model(cls, registry, models, name=None):
         for model in models:
+            mapper_cls = type('ModelMapper', (cls,), {
+                'name': name or model.__name__,
+                'model': model,
+                'create_realtions': lambda self: get_model_relations(self.model),
+            })
+
             mapper_cls.create(
                 registry,
-                model=model,
                 db_id=get_model_db_id(registry, model),
+                create_schema=False,
             )
 
 
 class I18nMixin:
 
-    internal_i18n_class = InternalI18n
-    internal_i18n_props = [
-        'lang',
-    ]
+    STATE_ABSENT = 'absent'
+    STATE_NORMAL = 'normal'
+
+    i18n_impl_class = I18nImpl
     langs = ['ru', 'en']
+    common_keys = []
 
-    def __init__(self, mappers, internal):
-        super().__init__(mappers, internal.internal)
-        self.internal_i18n = internal
-        for prop in self.internal_i18n_props:
-            setattr(self, prop, getattr(internal, prop))
+    def __init__(self, registry, lang, **kwargs):
+        assert lang in self.langs
+        super().__init__(registry, **kwargs)
+        self.lang = lang
 
-    @classmethod
-    def create_internals(cls, mappers, **kwargs):
-        assert 'lang' not in kwargs
-        child_internals = [
-            super().create_internals(mappers, lang=lang, **kwargs)
-            for lang in cls.langs
+    def get_mapper(self, **kwargs):
+        db_id = kwargs.get('db_id', self.db_id)
+        lang = kwargs.get('lang', self.lang)
+        name = kwargs.get('name', self.name)
+        return self.registry[db_id][lang][name]
+
+    def i18n_base_query(self):
+        return super().query()
+
+    def query(self):
+        return self.i18n_base_query().where(self.c['state']!=self.STATE_ABSENT)
+
+    def absent_query(self):
+        return self.i18n_base_query().filter_by(state=self.STATE_ABSENT)
+
+    def get_states(self):
+        states = getattr(super(), 'get_states', lambda: set())()
+        states.add(self.STATE_NORMAL)
+        states.add(self.STATE_ABSENT)
+        return states
+
+    # schema
+    def create_id_column(self):
+        if self.lang==self.langs[0]:
+            return sa.Column(
+                'id', sa.Integer, primary_key=True, autoincrement=True)
+        else:
+            return sa.Column(
+                'id',
+                sa.Integer,
+                sa.ForeignKey(
+                    self.get_mapper(lang=self.langs[0]).c['id'],
+                    ondelete='cascade',
+                ),
+                primary_key=True,
+                autoincrement=False,
+            )
+
+    def create_state_column(self):
+        return sa.Column(
+            'state',
+            sa.Enum(*self.get_states()),
+            nullable=False,
+        )
+
+    def create_system_columns(self):
+        return [
+            self.create_id_column(),
+            self.create_state_column(),
         ]
-        internals = []
-        for child_internal in zip(*child_internals):
-            for lang in cls.langs:
-                internals.append(
-                    cls.inernal_i18n_class(cls.langs, child_internal, lang),
-                )
-        return internals
+
+    @property
+    def tablename(self):
+        return '{}{}'.format(self.name, self.lang.capitalize())
+
+    # i18n impl
+    @cached_property
+    def i18n_impl(self):
+        return self.i18n_impl_class(
+            self.langs,
+            self.i18n_mappers,
+            self.lang,
+            super().impl,
+            common_keys=self.common_keys,
+            STATE_ABSENT=self.STATE_ABSENT,
+            STATE_NORMAL=self.STATE_NORMAL,
+        )
+
+    @cached_property
+    def i18n_mappers(self):
+        return [self.get_mapper(lang=lang) for lang in self.langs]
+
+    @property
+    def impl(self):
+        return self.i18n_impl
+
+    async def get_lang_version(self, session, item_id):
+        return await self.i18n_impl.get_version(session, item_id)
+
+    async def create_lang_version(self, session, item_id):
+        return await self.i18n_impl.create_version(session, item_id)
+
+    #factory
+    @classmethod
+    def create_mappers(cls, registry, **kwargs):
+        return [cls(registry, lang=lang, **kwargs) for lang in cls.langs]
 
     @classmethod
-    def register_mappers(cls, mappers, new_mappers):
-        for mapper in new_mappers:
-            mappers[mapper.db_id][mapper.lang][mapper.name] = mapper
+    def register_mappers(cls, registry, mappers, create_schema=True):
+        for mapper in mappers:
+            lang_registry = registry[mapper.db_id].setdefault(mapper.lang, {})
+            lang_registry[mapper.name] = mapper
+            if create_schema:
+                registry.create_schema_mappers.append(mapper)
+
 
 
 class PublicationMixin:
 
+    query_class = PubQuery
+
+    STATE_PRIVATE = 'private'
+    STATE_PUBLIC = 'public'
+
+    STATE_NORMAL = STATE_PRIVATE
+
+    pub_impl_class = PubImpl
     db_ids = ['admin', 'front']
 
-    internal_pub_class = InternalPublication
-    internal_pub_props = [
-        'publish',
-    ]
+    def query(self):
+        return super().query().where(self.c['state']!=self.PRIVATE)
 
-    def __init__(self, mappers, internal):
-        super().__init__(mappers, internal.internal)
-        self.internal_pub = internal
-        for prop in self.internal_pub_props:
-            setattr(self, prop, getattr(internal, prop))
+    def public_query(self):
+        return super().query().filter_by(state=self.PUBLIC)
+
+    def get_states(self):
+        states = getattr(super(), 'get_states', lambda: set())()
+        states.add(self.STATE_PRIVATE)
+        states.add(self.STATE_PUBLIC)
+        return states
+
+    # schema
+    def create_state_column(self):
+        return sa.Column(
+            'state',
+            sa.Enum(*self.get_states()),
+            nullable=False,
+        )
+
+    def create_system_columns(self):
+        return [
+            self.create_id_column(),
+            self.create_state_column(),
+        ]
+
+    # pub impl
+    @cached_property
+    def pub_impl(self):
+        return self.pub_impl_class(
+            self.db_ids,
+            self.pub_mappers,
+            self.db_id,
+            super().impl,
+        )
+
+    @cached_property
+    def pub_mappers(self):
+        return [self.get_mapper(db_id=db_id) for db_id in self.db_ids]
+
+    @property
+    def impl(self):
+        return self.pub_impl
+
+    def pub_base_query(self):
+        return super().query()
+
+    def query(self):
+        return self.pub_base_query()
+
+    def public_query(self):
+        return self.i18n_base_query().filter_by(state=self.STATE_PUBLIC)
+
+    def publish(self, session, query, item_id):
+        return self.pub_impl.publish(session, query, item_id)
+
+    #factory
+    @classmethod
+    def create_mappers(cls, registry, **kwargs):
+        return [cls(registry, db_id=db_id, **kwargs) for db_id in cls.db_ids]
 
     @classmethod
     def create_internals(cls, mappers, **kwargs):
@@ -423,50 +646,37 @@ class PublicationMixin:
         for child_internal in zip(*child_internals):
             for db_id in cls_db_ids:
                 internals.append(
-                    cls.inernal_pub_class(cls.db_ids, child_internal, db_id),
+                    cls.internal_pub_class(
+                        cls.db_ids,
+                        child_internal,
+                        db_id,
+                        STATE_PRIVATE=cls.STATE_PRIVATE,
+                        STATE_PUBLIC=cls.STATE_PUBLIC,
+                    ),
                 )
         return internals
 
 
+class MarkDeletedMixin:
 
+    STATE_NORMAL = 'normal'
+    STATE_DELETED = 'deleted'
 
-#class I18n:
-#
-#    langs = ['ru', 'en']
-#    common_keys = []
-#
-#    def __init__(self, mappers, **kwargs):
-#        self.lang = kwargs.pop('lang')
-#        super().__init__(mappers, **kwargs)
-#
-#    @classmethod
-#    def create(cls, mappers, **kwargs):
-#        for lang in cls.langs:
-#            mappers[self.db_id][lang] = cls(mapper, **kwargs)
-#
-#    async def insert(self, conn, item):
-#        cur_lang_item = item
-#        other_lang_item = {key: value for key, value in item.items() \
-#            if key in self.common_keys}
-#
-#        for lang in self.langs:
-#            lang_item = (lang == self.lang) and cur_lang_item or other_lang_item
-#
-#            result = await super(I18n, self.mappers[self.db_id][lang]).\
-#                insert(conn, lang_item)
-#            if lang == self.langs[0]:
-#                cur_lang_item['id'] = result['id']
-#                other_lang_item['id'] = result['id']
-#        return cur_lang_item
-#
-#
-#    async def delete(self, conn, id, query=None):
-#        for lang in self.langs[1:]:
-#            await super(I18n, self.mappers[self.db_id][lang]).delete(conn, id)
-#        await super(I18n, self.mappers[self.db_id][self.langs[0]]).\
-#            delete(conn, id)
-#
+    async def delete_item(self, session, query, item_id):
+        for mapper in self.internal_core.internal_mappers:
+            mapper.update_item(
+                session,
+                query,
+                item_id,
+                {'state': self.DELETED_STATE},
+            )
 
+    @classmethod
+    def get_states(cls):
+        states = getattr(super(), 'get_states', lambda: {})()
+        states.add(STATE_NORMAL)
+        states.add(STATE_DELETED)
+        return states
 
 
 class M2MRelation:
@@ -501,14 +711,14 @@ class M2MRelation:
         await conn.execute(self.delete_query(id))
 
     def select_query(self, ids):
-        s = sql.select([self.rel_local_field, self.rel_remote_field]) \
+        s = sa.sql.select([self.rel_local_field, self.rel_remote_field]) \
             .where(self.rel_local_field.in_(ids))
         if self.order_field:
             s = s.order_by(self.order_field)
         return s
 
     def delete_query(self, local_id):
-        return sql.delete(self.rel_table) \
+        return sa.sql.delete(self.rel_table) \
             .where(self.rel_local_field == local_id)
 
     def insert_query(self, local_id, remote_id, order=None):
@@ -518,7 +728,7 @@ class M2MRelation:
         }
         if order:
             values[self.order_field.key] = order
-        return sql.insert(self.rel_table).values(**values)
+        return sa.sql.insert(self.rel_table).values(**values)
 
 
 class Base(Core):
@@ -534,6 +744,14 @@ class I18nPub(PublicationMixin, I18nMixin, Base):
     pass
 
 
+class I18nPubMarkDeleted(
+    PublicationMixin,
+    I18nMixin,
+    MarkDeletedMixin,
+    Base,
+    ):
+        pass
+
 
 def get_model_db_id(registry, model):
     model_meta = model.__table__.metadata
@@ -541,18 +759,16 @@ def get_model_db_id(registry, model):
         if meta == model_meta:
             return db_id
 
-def get_model_table(model):
-    return model.__table__
 
 def get_model_relations(model):
     relations = {}
     for name in dir(model):
         attr = getattr(model, name)
-        if isinstance(attr, InstrumentedAttribute):
+        if isinstance(attr, sa.orm.attributes.InstrumentedAttribute):
             prop = attr.property
-            if isinstance(prop, ColumnProperty):
+            if isinstance(prop, sa.orm.ColumnProperty):
                 pass
-            elif isinstance(prop, RelationshipProperty):
+            elif isinstance(prop, sa.orm.RelationshipProperty):
                 if prop.secondaryjoin is None:
                     pass
                 else:
