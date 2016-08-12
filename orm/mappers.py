@@ -3,6 +3,7 @@ from iktomi.utils import cached_property
 
 from .query import Query, PubQuery
 from . import exc
+from . import relations
 
 
 __all__ = [
@@ -244,7 +245,7 @@ class Core:
             mapper_cls = type('ModelMapper', (cls,), {
                 'name': name or model.__name__,
                 'model': model,
-                'create_realtions': lambda self: get_model_relations(self.model),
+                'create_relations': lambda self: get_model_relations(self),
             })
 
             mapper_cls.create(
@@ -555,58 +556,6 @@ class MarkDeletedMixin:
         return states
 
 
-class M2MRelation:
-
-    def __init__(self, local_field,
-                 rel_local_field, rel_remote_field,
-                 remote_field,
-                 order_field=None):
-        self.local_field = local_field
-        self.rel_local_field = rel_local_field
-        self.rel_remote_field = rel_remote_field
-        self.remote_field = remote_field
-        self.local_table = local_field.table
-        self.rel_table = rel_local_field.table
-        self.remote_table = remote_field.table
-        self.order_field = order_field
-
-    async def load(self, conn, ids):
-        result = {}
-        for row in await conn.execute(self.select_query(ids)):
-            result.setdefault(row[self.rel_local_field], []).\
-                append(row[self.rel_remote_field])
-        return result
-
-    async def store(self, conn, id, value):
-        await conn.execute(self.delete_query(id))
-        for num, rel_id in enumerate(value):
-            order = self.order_field and (num+1) or None
-            await conn.execute(self.insert_query(id, rel_id, order=order))
-
-    async def delete(self, conn, id):
-        await conn.execute(self.delete_query(id))
-
-    def select_query(self, ids):
-        s = sa.sql.select([self.rel_local_field, self.rel_remote_field]) \
-            .where(self.rel_local_field.in_(ids))
-        if self.order_field:
-            s = s.order_by(self.order_field)
-        return s
-
-    def delete_query(self, local_id):
-        return sa.sql.delete(self.rel_table) \
-            .where(self.rel_local_field == local_id)
-
-    def insert_query(self, local_id, remote_id, order=None):
-        values = {
-            self.rel_local_field.key: local_id,
-            self.rel_remote_field.key: remote_id,
-        }
-        if order:
-            values[self.order_field.key] = order
-        return sa.sql.insert(self.rel_table).values(**values)
-
-
 class Base(Core):
     pass
 
@@ -636,10 +585,10 @@ def get_model_db_id(registry, model):
             return db_id
 
 
-def get_model_relations(model):
-    relations = {}
-    for name in dir(model):
-        attr = getattr(model, name)
+def get_model_relations(mapper):
+    relations_dict = {}
+    for name in dir(mapper.model):
+        attr = getattr(mapper.model, name)
         if isinstance(attr, sa.orm.attributes.InstrumentedAttribute):
             prop = attr.property
             if isinstance(prop, sa.orm.ColumnProperty):
@@ -651,10 +600,16 @@ def get_model_relations(model):
                     local1, remote1 = prop.local_remote_pairs[0]
                     local2, remote2 = prop.local_remote_pairs[1]
                     order_field = remote1.table.c.get('order')
-                    relations[prop.key] = M2MRelation(
-                        local1, remote1, remote2, local2
+                    # argument is class
+                    remote_name = getattr(prop.argument, '__name__', None)
+                    # argument is classname
+                    if remote_name is None:
+                        remote_name = getattr(prop.argument, 'arg', None)
+                    relations_dict[prop.key] = relations.M2M(
+                        mapper,
+                        remote_name,
+                        ordered='order' in remote1.table.c,
                     )
-
                 return {}
-    return relations
+    return relations_dict
 

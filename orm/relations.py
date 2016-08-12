@@ -1,6 +1,10 @@
 import sqlalchemy as sa
 from iktomi.utils import cached_property
 
+__all__ = (
+    'M2M',
+    'I18nM2M',
+)
 
 class M2M:
 
