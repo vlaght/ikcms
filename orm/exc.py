@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError
+
 class OrmError(Exception):
     pass
 
@@ -6,3 +8,4 @@ class ItemNotFoundError(OrmError):
 
 class ItemAlreadyExistsError(OrmError):
     pass
+
