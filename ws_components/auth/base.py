@@ -30,6 +30,7 @@ class AuthForm(ikcms.ws_apps.base.forms.MessageForm):
 class Component(ikcms.ws_components.base.Component):
     name = 'auth'
     requirements = ['db', 'cache']
+    users_mapper = 'main.User'
 
     def env_init(self, env):
         env.user = None
@@ -61,11 +62,10 @@ class Component(ikcms.ws_components.base.Component):
         env.user = None
 
     async def get_user_by_login(self, app, login):
-        Users = app.db.mappers['users']
-        query = Users.query()
-        query = query.where(Users.table.c.login == login)
-        async with await app.db(Users.db_id) as conn:
-            users = await Users.select(conn, query=query)
+        Users = app.db.mappers.get_mapper(self.users_mapper)
+        query = Users.query().filter_by(login=login)
+        async with await app.db() as session:
+            users = await query.select_items(session)
         return next(iter(users), None)
 
     async def get_user_by_token(self, app, token):

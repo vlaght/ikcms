@@ -35,21 +35,30 @@ class Registry(dict):
             for relation in mapper.relations.values():
                 relation.create_tables()
 
-    def set_id(self, id, mapper):
-        id_parts = isinstance(id, str) and id.split('.') or id
+    def set_mapper(self, path, mapper):
+        if isinstance(path, str):
+            parts =  path.split('.')
+        elif isinstance(path, [list, tuple]):
+            parts = path
+        #XXX
+        parts, name = parts[:-1], parts[-1]
         d = self
-        id_parts, name = id_parts[:-1], id_parts[-1]
-        for id_part in id_parts:
-            d = d.setdefault(id_part, {})
+        for part in parts:
+            d = d.setdefault(part, {})
         d[name] = mapper
 
-    def get_id(self, id, mapper):
-        id_parts = isinstance(id, str) and id.split('.') or id
+    def get_mapper(self, path):
+        if isinstance(path, str):
+            parts =  path.split('.')
+        elif isinstance(path, [list, tuple]):
+            parts = path
+        #XXX
+        parts, name = parts[:-1], parts[-1]
         d = self
-        id_parts, name = id_parts[:-1], id_parts[-1]
-        for id_part in id_parts:
-            d = d[id_part]
+        for part in parts:
+            d = d[part]
         return d[name]
+
 
     @classmethod
     def from_db_ids(cls, db_ids):
@@ -233,7 +242,7 @@ class Core:
     @classmethod
     def register_mappers(cls, registry, mappers, create_schema=True):
         for mapper in mappers:
-            registry.set_id(mapper.id, mapper)
+            registry.set_mapper(mapper.id, mapper)
             if create_schema:
                 registry.create_schema_mappers.append(mapper)
 
