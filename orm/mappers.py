@@ -51,6 +51,10 @@ class Registry(dict):
             d = d[id_part]
         return d[name]
 
+    @classmethod
+    def from_db_ids(cls, db_ids):
+        return cls({db_id: sa.MetaData() for db_id in db_ids})
+
 
 class Core:
 
@@ -337,7 +341,11 @@ class I18nMixin:
             else:
                 lang_values = dict(values)
                 self.set_absent_state(lang_values)
-                lang_keys = set(self.common_keys).union({'id', 'state'})
+                if keys is None:
+                    common_keys = set(self.common_keys)
+                else:
+                    common_keys = set(self.common_keys).intersection(keys)
+                lang_keys = common_keys.union({'id', 'state'})
             insert_item = mapper.i18n_base_insert_item
             results[lang] = await insert_item(session, lang_values, lang_keys)
             values['id'] = results[lang]['id']
@@ -355,7 +363,7 @@ class I18nMixin:
             update_item = mapper.i18n_base_update_item_by_id
             if lang==self.lang:
                 result = await update_item(session, item_id, values, keys)
-            else:
+            elif common_keys:
                 await update_item(
                     session,
                     item_id,
@@ -454,6 +462,9 @@ class PublicationMixin:
     def query(self):
         return self.pub_base_query()
 
+    def private_query(self):
+        return self.pub_base_query().filter_by(state=self.STATE_PRIVATE)
+
     def public_query(self):
         return self.pub_base_query().filter_by(state=self.STATE_PUBLIC)
 
@@ -462,8 +473,10 @@ class PublicationMixin:
         return [self.get_mapper(db_id=db_id) for db_id in self.db_ids]
 
     async def insert_item(self, session, values, keys=None):
+        assert self.db_id==self.db_ids[0], \
+            'Insert denied for "{}" mapper'.format(self.db_id)
         values = dict(values)
-        insert_item = self.pub_mappers[0].pub_base_insert_item
+        insert_item = self.pub_base_insert_item
         self.set_private_state(values)
         item = await insert_item(session, values, keys=keys)
         values = {'id': item['id']}
@@ -473,25 +486,33 @@ class PublicationMixin:
         return item
 
     async def delete_item(self, session, query, item_id):
-        await self._exists_check(session, query, item_id)
+        assert self.db_id==self.db_ids[0], \
+            'Delete denied for "{}" mapper'.format(self.db_id)
+        await super().delete_item(session, query, item_id)
+
+    async def delete_item_by_id(self, session, item_id):
         for mapper in self.pub_mappers:
-            await mapper.pub_base_delete_item(
-                session, mapper.pub_base_query(), item_id)
+            await mapper.pub_base_delete_item_by_id(session, item_id)
+
+    async def pub_base_delete_item_by_id(self, session, item_id):
+            await super().delete_item_by_id(session, item_id)
 
     async def publish(self, session, query, item_id):
+        assert self.db_id==self.db_ids[0], \
+            'Publish denied for "{}" mapper'.format(self.db_id)
         assert self.db_id == self.db_ids[0]
         await self._exists_check(session, query, item_id)
         admin_mapper = self.pub_mappers[0]
-        items = await admin_mapper.select_items(session, query)
-        values = {}
-        self.set_public_state(values)
-        await admin_mapper.update_item(session, query, item_id, values)
-        values = items[0]
-        self.set_public_state(values)
+        items = await admin_mapper.select_items(session, query.id(item_id))
+        admin_item = items[0]
+        assert admin_item['state'] == 'private', \
+            'Item id="{}" is not private'.format(admin_item['id'])
+        values = admin_item
+        self.set_public_state(admin_item)
+        await admin_mapper.update_item_by_id(session, item_id, values, ['state'])
         front_mapper = self.pub_mappers[1]
-        await front_mapper.update_item(
+        await front_mapper.update_item_by_id(
             session,
-            front_mapper.query(),
             item_id,
             values,
         )
@@ -511,7 +532,11 @@ class PublicationMixin:
     #factory
     @classmethod
     def create_mappers(cls, registry, **kwargs):
-        return [cls(registry, db_id=db_id, **kwargs) for db_id in cls.db_ids]
+        result = []
+        for db_id in cls.db_ids:
+            mappers = super().create_mappers(registry, db_id=db_id, **kwargs)
+            result.extend(mappers)
+        return result
 
     @classmethod
     def create_internals(cls, mappers, **kwargs):

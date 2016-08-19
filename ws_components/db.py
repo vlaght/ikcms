@@ -7,10 +7,17 @@ from ikcms import orm
 
 async def create_mysql_engine(url, engine_params):
     from aiomysql.sa import create_engine
+    from sqlalchemy.dialects.mysql.pymysql import MySQLDialect_pymysql
+    dialect = MySQLDialect_pymysql(
+        paramstyle='pyformat',
+        dbapi=MySQLDialect_pymysql.dbapi(),
+    )
+    dialect.default_paramstyle = 'pyformat'
     kwargs = url.translate_connect_args(
             database='db',
             username='user')
     kwargs.update(engine_params, **url.query)
+    kwargs['dialect'] = dialect
     return await create_engine(**kwargs)
 
 async def create_postgress_engine(url, engine_params):
@@ -70,7 +77,6 @@ class Component(ikcms.ws_components.base.Component):
     def close(self):
         for engine in self.engines.values():
             engine.terminate()
-
 
 component = Component.create_cls
 

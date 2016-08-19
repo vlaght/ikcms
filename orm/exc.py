@@ -4,4 +4,5 @@ class OrmError(Exception):
 class ItemNotFoundError(OrmError):
     pass
 
-
+class ItemAlreadyExistsError(OrmError):
+    pass
