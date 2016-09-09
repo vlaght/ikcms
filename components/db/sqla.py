@@ -68,8 +68,8 @@ class SQLAComponent(ikcms.components.db.base.DBComponent):
             models.metadata.create_all(self.engines[db_id])
 
     def initial_all(self, session):
-        from models.initial import initialize 
-        initialize(session)
+        from models.initial import initialize
+        initialize(self.app, session)
 
     def drop_all(self):
         # XXX Need confirmation?

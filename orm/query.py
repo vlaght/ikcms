@@ -25,6 +25,13 @@ class Query(sa.sql.Select):
             keys=keys,
         )
 
+    async def select_first_item(self, session, keys=None):
+        return await self.mapper.select_first_item(
+            session,
+            self,
+            keys=keys,
+        )
+
     async def insert_item(self, session, values, keys=None): #XXX
         return await self.mapper.insert_item(
                 session,
@@ -53,6 +60,15 @@ class Query(sa.sql.Select):
             session,
             self,
         )
+
+    async def fill(self, session, data, path):
+        return await self.mapper.fill(
+            session,
+            self,
+            data,
+            path,
+        )
+
 
 
 class PubQuery(Query):

@@ -23,13 +23,13 @@ class M2M:
         columns = [
             sa.Column(
                 self.local_field_name,
-                sa.Integer,
+                self.mapper1.c['id'].type,
                 sa.ForeignKey(self.mapper1.table.c.id, ondelete="CASCADE"),
                 nullable=False,
             ),
             sa.Column(
                 self.remote_field_name,
-                sa.Integer,
+                self.mapper2.c['id'].type,
                 sa.ForeignKey(self.mapper2.table.c.id, ondelete="CASCADE"),
                 nullable=False,
             ),

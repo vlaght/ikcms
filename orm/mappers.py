@@ -115,6 +115,9 @@ class Core:
     def create_relations(self):
         return {}
 
+    async def schema_initialize(self, session):
+        pass
+
     @property
     def c(self):
         return dict(self.table.c, **self.relations)
@@ -152,6 +155,10 @@ class Core:
         else:
             return []
 
+    async def select_first_item(self, session, query, keys=None):
+        items = await self.select_items(session, query.limit(1), keys)
+        return items and items[0] or None
+
     async def insert_item(self, session, values, keys=None):
         keys = keys or list(values.keys())
         assert set(keys).issubset(self.allowed_keys), \
@@ -161,7 +168,14 @@ class Core:
         table_values = {key: values[key] for key in table_keys}
         relation_values = {key: values[key] for key in relation_keys}
 
-        query = sa.sql.insert(self.table).values([table_values])
+        # set defaults, aio engine don't do it
+        for key, column in self.table.c.items():
+            if key not in table_values and column.default is not None:
+                if column.default.is_callable:
+                    table_values[key] = column.default.arg(self)
+                else:
+                    table_values[key] = column.default.arg
+        query = sa.sql.insert(self.table).values(table_values)
         result = await session.execute(query)
         item = dict(values)
         if values.get('id') is None:
@@ -266,6 +280,57 @@ class Core:
                 db_id=get_model_db_id(registry, model),
                 create_schema=False,
             )
+
+    async def fill(self, session, query, data, str_path):
+        paths = str_path.split('.')
+        if isinstance(data, dict):
+            data = [data]
+        while paths:
+            tp = self._get_list_type(data)
+            if tp == list:
+                tmp_data = []
+                for item in data:
+                    tmp_data+=item
+                data = tmp_data
+            elif tp == dict:
+                path = paths.pop(0)
+                prev_data = data
+                data = [x[path] for x in data]
+            else:
+                raise TypeError(tp)
+
+        tp = self._get_list_type(data)
+        if tp == list:
+            await self._fill_lists(session, query, data)
+        else:
+            await self._fill_dicts(session, query, prev_data, path)
+
+    def _get_list_type(self, items_list):
+        data = [item for item in items_list if item]
+        tps = set([type(item) for item in items_list])
+        if len(tps) > 1:
+            raise TypeError(tps)
+        return tps.pop()
+
+    async def _fill_lists(self, session, query, data):
+        ids = set()
+        for items_list in data:
+            ids.update(items_list)
+        items = await query.id(ids).select_items(session)
+        items_by_id = {item['id']: item for item in items}
+        for items_list in data:
+            items = list(map(lambda x: items_by_id[x], items_list))
+            items_list.clear()
+            items_list.extend(items)
+
+    async def _fill_dicts(self, session, data, key):
+        ids = set()
+        for items_dict in data:
+            ids.add(items_dict[key])
+        items = await query.id(ids).select_items(session)
+        items_by_id = {id: item for item in items}
+        for items_dict in data:
+            items_dict[key] = items_by_id[item_dict[key]]
 
 
 class I18nMixin:
