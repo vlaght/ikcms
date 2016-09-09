@@ -65,7 +65,7 @@ class Session:
     async def __aenter__(self):
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type, e, tb):
         if exc_type:
             await self.close()
         else:

@@ -1,5 +1,4 @@
 import asyncio
-import urllib.parse
 import logging
 
 import websockets

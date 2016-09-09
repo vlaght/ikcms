@@ -107,7 +107,7 @@ class Component(ikcms.ws_components.base.Component):
         perms = set()
         roles = self.get_user_roles(user)
         for role in roles:
-            perms.update(permisssions.get('role', []))
+            perms.update(permissions.get('role', []))
         return perms
 
 

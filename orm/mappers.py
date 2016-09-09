@@ -21,6 +21,7 @@ __all__ = [
 class Registry(dict):
 
     def __init__(self, metadata):
+        super().__init__()
         self.metadata = metadata
         for key in metadata:
             self[key] = {}
@@ -37,7 +38,7 @@ class Registry(dict):
 
     def set_mapper(self, path, mapper):
         if isinstance(path, str):
-            parts =  path.split('.')
+            parts = path.split('.')
         elif isinstance(path, [list, tuple]):
             parts = path
         #XXX
@@ -49,7 +50,7 @@ class Registry(dict):
 
     def get_mapper(self, path):
         if isinstance(path, str):
-            parts =  path.split('.')
+            parts = path.split('.')
         elif isinstance(path, [list, tuple]):
             parts = path
         #XXX
@@ -136,7 +137,7 @@ class Core:
 
     def query(self):
         return self.query_class(self)
- 
+
     def div_keys(self, keys=None):
         if keys is None:
             keys = self.allowed_keys
@@ -195,7 +196,7 @@ class Core:
         table_values = {key: values[key] for key in table_keys}
         relation_values = {key: values[key] for key in relation_keys}
         query = sa.sql.update(self.table).values(**table_values)
-        query = query.where(self.c['id']==item_id)
+        query = query.where(self.c['id'] == item_id)
         result = await session.execute(query)
         item_id = values.get('id', item_id)
         for key, value in relation_values.items():
@@ -207,7 +208,7 @@ class Core:
         await self.delete_item_by_id(session, item_id)
 
     async def delete_item_by_id(self, session, item_id):
-        query = sa.sql.delete(self.table).where(self.c['id']==item_id)
+        query = sa.sql.delete(self.table).where(self.c['id'] == item_id)
         for key in self.relation_keys:
             await self.relations[key].delete(session, item_id)
         await session.execute(query)
@@ -227,7 +228,7 @@ class Core:
         table_keys.add('id')
         query = sa.sql.select([self.c[key] for key in table_keys])
         if len(ids) == 1:
-            query = query.where(self.c['id']==ids[0])
+            query = query.where(self.c['id'] == ids[0])
         else:
             query = query.where(self.c['id'].in_(ids))
         rows = list(await session.execute(query))
@@ -290,7 +291,7 @@ class Core:
             if tp == list:
                 tmp_data = []
                 for item in data:
-                    tmp_data+=item
+                    tmp_data += item
                 data = tmp_data
             elif tp == dict:
                 path = paths.pop(0)
@@ -319,18 +320,18 @@ class Core:
         items = await query.id(ids).select_items(session)
         items_by_id = {item['id']: item for item in items}
         for items_list in data:
-            items = list(map(lambda x: items_by_id[x], items_list))
+            items = [items_by_id[x] for x in items_list]
             items_list.clear()
             items_list.extend(items)
 
-    async def _fill_dicts(self, session, data, key):
+    async def _fill_dicts(self, session, query, data, key):
         ids = set()
         for items_dict in data:
             ids.add(items_dict[key])
         items = await query.id(ids).select_items(session)
         items_by_id = {id: item for item in items}
         for items_dict in data:
-            items_dict[key] = items_by_id[item_dict[key]]
+            items_dict[key] = items_by_id[items_dict[key]]
 
 
 class I18nMixin:
@@ -352,7 +353,7 @@ class I18nMixin:
 
     # schema
     def create_id_column(self):
-        if self.lang==self.langs[0]:
+        if self.lang == self.langs[0]:
             return sa.Column(
                 'id', sa.Integer, primary_key=True, autoincrement=True)
         else:
@@ -398,7 +399,7 @@ class I18nMixin:
         return states
 
     def query(self):
-        return self.i18n_base_query().where(self.c['state']!=self.STATE_ABSENT)
+        return self.i18n_base_query().where(self.c['state'] != self.STATE_ABSENT)
 
     def absent_query(self):
         return self.i18n_base_query().filter_by(state=self.STATE_ABSENT)
@@ -435,7 +436,7 @@ class I18nMixin:
         for lang in self.langs:
             mapper = self.i18n_mappers[lang]
             update_item = mapper.i18n_base_update_item_by_id
-            if lang==self.lang:
+            if lang == self.lang:
                 result = await update_item(session, item_id, values, keys)
             elif common_keys:
                 await update_item(
@@ -468,7 +469,7 @@ class I18nMixin:
         return await super().insert_item(session, values, keys)
 
     async def i18n_base_update_item_by_id(self, session, item_id, values,
-            keys=None):
+                                          keys=None):
         return await super().update_item_by_id(session, item_id, values, keys)
 
     async def i18n_base_delete_item_by_id(self, session, item_id):
@@ -502,12 +503,6 @@ class PublicationMixin:
     STATE_NORMAL = STATE_PRIVATE
 
     db_ids = ['admin', 'front']
-
-    def query(self):
-        return super().query().where(self.c['state']!=self.PRIVATE)
-
-    def public_query(self):
-        return super().query().filter_by(state=self.PUBLIC)
 
     def get_states(self):
         states = getattr(super(), 'get_states', lambda: set())()
@@ -547,7 +542,7 @@ class PublicationMixin:
         return [self.get_mapper(db_id=db_id) for db_id in self.db_ids]
 
     async def insert_item(self, session, values, keys=None):
-        assert self.db_id==self.db_ids[0], \
+        assert self.db_id == self.db_ids[0], \
             'Insert denied for "{}" mapper'.format(self.db_id)
         values = dict(values)
         insert_item = self.pub_base_insert_item
@@ -560,7 +555,7 @@ class PublicationMixin:
         return item
 
     async def delete_item(self, session, query, item_id):
-        assert self.db_id==self.db_ids[0], \
+        assert self.db_id == self.db_ids[0], \
             'Delete denied for "{}" mapper'.format(self.db_id)
         await super().delete_item(session, query, item_id)
 
@@ -569,10 +564,10 @@ class PublicationMixin:
             await mapper.pub_base_delete_item_by_id(session, item_id)
 
     async def pub_base_delete_item_by_id(self, session, item_id):
-            await super().delete_item_by_id(session, item_id)
+        await super().delete_item_by_id(session, item_id)
 
     async def publish(self, session, query, item_id):
-        assert self.db_id==self.db_ids[0], \
+        assert self.db_id == self.db_ids[0], \
             'Publish denied for "{}" mapper'.format(self.db_id)
         assert self.db_id == self.db_ids[0]
         await self._exists_check(session, query, item_id)
@@ -612,26 +607,6 @@ class PublicationMixin:
             result.extend(mappers)
         return result
 
-    @classmethod
-    def create_internals(cls, mappers, **kwargs):
-        child_internals = [
-            super().create_internals(mappers, db_id=db_id, **kwargs) \
-            for db_id in cls.db_ids
-        ]
-        internals = []
-        for child_internal in zip(*child_internals):
-            for db_id in cls_db_ids:
-                internals.append(
-                    cls.internal_pub_class(
-                        cls.db_ids,
-                        child_internal,
-                        db_id,
-                        STATE_PRIVATE=cls.STATE_PRIVATE,
-                        STATE_PUBLIC=cls.STATE_PUBLIC,
-                    ),
-                )
-        return internals
-
 
 class MarkDeletedMixin:
 
@@ -650,8 +625,8 @@ class MarkDeletedMixin:
     @classmethod
     def get_states(cls):
         states = getattr(super(), 'get_states', lambda: {})()
-        states.add(STATE_NORMAL)
-        states.add(STATE_DELETED)
+        states.add(cls.STATE_NORMAL)
+        states.add(cls.STATE_DELETED)
         return states
 
 
@@ -669,12 +644,12 @@ class I18nPub(PublicationMixin, I18nMixin, Base):
 
 
 class I18nPubMD(
-    PublicationMixin,
-    I18nMixin,
-    MarkDeletedMixin,
-    Core,
+        PublicationMixin,
+        I18nMixin,
+        MarkDeletedMixin,
+        Core,
 ):
-        pass
+    pass
 
 
 def get_model_db_id(registry, model):

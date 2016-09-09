@@ -119,8 +119,12 @@ class M2M:
 class I18nM2M(M2M):
 
     def __init__(self, mapper1, mapper_name2, ordered=False, tablename=None):
-        super().__init__(mapper1, mapper_name2,
-            ordered=ordered, tablename=tablename)
+        super().__init__(
+            mapper1,
+            mapper_name2,
+            ordered=ordered,
+            tablename=tablename,
+        )
         self.lang = mapper1.lang
 
     @property
@@ -130,10 +134,10 @@ class I18nM2M(M2M):
 
     @property
     def mapper1(self):
-        return self.mappers[self.db_id][self.lang][self.mapper_name1]
+        return self.registry[self.db_id][self.lang][self.mapper_name1]
 
     @property
     def mapper2(self):
-        return self.mappers[self.db_id][self.lang][self.mapper_name2]
+        return self.registry[self.db_id][self.lang][self.mapper_name2]
 
 

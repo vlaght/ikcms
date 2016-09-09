@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.query import Query
-from iktomi.utils import cached_property
 
 import ikcms.components.db.base
 

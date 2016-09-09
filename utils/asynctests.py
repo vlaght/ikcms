@@ -25,13 +25,14 @@ def asynctest(coroutine):
 
 class TableState(dict):
 
-    def __init__(self, table, primary_keys=['id']):
+    def __init__(self, table, primary_keys=None):
+        super().__init__()
         self.table = table
-        self.primary_keys = primary_keys
-        self.order_fields = [table.c[key] for key in primary_keys]
+        self.primary_keys = primary_keys or ['id']
+        self.order_fields = [table.c[key] for key in self.primary_keys]
 
     def row_key(self, row):
-        if len(self.primary_keys)==1:
+        if len(self.primary_keys) == 1:
             return row[self.primary_keys[0]]
         else:
             return tuple([row[key] for key in self.primary_keys])
@@ -79,8 +80,8 @@ class DbState(collections.OrderedDict):
         return self.__class__(
             [(key, value.copy()) for key, value in self.items()])
 
-    def add_table(self, key, table, primary_keys=['id']):
-        self[key] = TableState(table, primary_keys)
+    def add_table(self, key, table, primary_keys=None):
+        self[key] = TableState(table, primary_keys or ['id'])
 
     async def syncdb(self, session):
         for table_state in self.values():

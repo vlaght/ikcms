@@ -10,6 +10,8 @@ class Base:
     name = None
     require_perms = ''
 
+    MessageForm = MessageFormBase
+
     def __init__(self, stream):
         assert self.name is not None
         self.stream = stream

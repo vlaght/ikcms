@@ -3,7 +3,8 @@ from . import exc
 from .stream import Stream
 
 __all__ = (
-    'WS_Streams',
+    'component',
+    'exc',
     'Stream',
 )
 

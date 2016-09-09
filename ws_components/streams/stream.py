@@ -136,7 +136,7 @@ class Stream(StreamBase):
             list_fields=list_form.get_cfg(),
             filter_fields=filter_form.get_cfg(),
             permissions=self.component.app.auth.get_user_perms(
-                user, self.permissions),
+                env.user, self.permissions),
         )
 
     async def get_item(self, db, item_id, required=False):
@@ -183,7 +183,7 @@ class I18nMixin:
     langs = ['ru', 'en']
 
     def __init__(self, component, lang, **kwargs):
-        assert lang in langs
+        assert lang in self.langs
         self.lang = lang
         super().__init__(component, **kwargs)
 

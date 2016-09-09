@@ -3,8 +3,6 @@ import asyncio
 from sqlalchemy.dialects.mysql.pymysql import MySQLDialect_pymysql
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.exc import DBAPIError
-from sqlalchemy.sql import ClauseElement
-from sqlalchemy.sql import Insert
 
 import aiomysql
 import aiomysql.sa
@@ -52,8 +50,9 @@ class Engine(aiomysql.sa.Engine):
 
 def create_engine(url, **kwargs):
     url_kwargs = make_url(url).translate_connect_args(
-            database='db',
-            username='user')
+        database='db',
+        username='user',
+    )
     kwargs.update(url_kwargs, **url.query)
     return aiomysql.utils._PoolContextManager(_create_engine(**kwargs))
 

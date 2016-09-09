@@ -8,14 +8,14 @@ class Query(sa.sql.Select):
 
     def id(self, *ids):
         if len(ids) == 1:
-            return self.where(self.mapper.c['id']==ids[0])
+            return self.where(self.mapper.c['id'] == ids[0])
         else:
             return self.where(self.mapper.c['id'].in_(ids))
 
     def filter_by(self, **kwargs):
         q = self
         for key, value in kwargs.items():
-            q = q.where(self.mapper.c[key]==value)
+            q = q.where(self.mapper.c[key] == value)
         return q
 
     async def select_items(self, session, keys=None):
@@ -34,9 +34,9 @@ class Query(sa.sql.Select):
 
     async def insert_item(self, session, values, keys=None): #XXX
         return await self.mapper.insert_item(
-                session,
-                values=values,
-                keys=keys,
+            session,
+            values=values,
+            keys=keys,
         )
 
     async def update_item(self, session, item_id, values, keys=None):
@@ -50,9 +50,9 @@ class Query(sa.sql.Select):
 
     async def delete_item(self, session, item_id):
         return await self.mapper.delete_item(
-                session,
-                self,
-                item_id,
+            session,
+            self,
+            item_id,
         )
 
     async def count_items(self, session):
