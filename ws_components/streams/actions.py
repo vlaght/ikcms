@@ -17,7 +17,7 @@ class Base:
         self.stream = stream
 
     async def handle(self, env, raw_message):
-        self.stream.check_perms(env.user, self.require_perms)
+        self.stream.component.app.auth.check_perms(env.user, self.require_perms)
         message = self.MessageForm().to_python(raw_message)
         return await self._handle(env, message)
 

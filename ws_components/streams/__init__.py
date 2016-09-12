@@ -1,11 +1,12 @@
 import ikcms.ws_components.base
 from . import exc
-from .stream import Stream
+from . import streams
+
 
 __all__ = (
     'component',
     'exc',
-    'Stream',
+    'streams',
 )
 
 

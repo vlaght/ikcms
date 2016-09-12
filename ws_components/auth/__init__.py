@@ -110,5 +110,11 @@ class Component(ikcms.ws_components.base.Component):
             perms.update(permissions.get('role', []))
         return perms
 
+    def check_perms(self, user, perms):
+        user_perms = self.component.app.auth.\
+            get_user_perms(user, self.permissions)
+        if not set(perms).issubset(user_perms):
+            raise exc.AccessDeniedError
+
 
 component = Component.create_cls

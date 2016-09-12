@@ -6,12 +6,16 @@ from . import exc
 
 
 __all__ = (
-    'StreamBase',
+    'Base',
+    'I18nMixin',
+    'PublicationMixin',
     'Stream',
+    'I18nStream',
+    'PubI18nStream',
 )
 
 
-class StreamBase:
+class Base:
     name = None
     title = u'Название потока'
     actions = []
@@ -38,7 +42,7 @@ class StreamBase:
         if action:
             return action.handle(env, message)
         else:
-            raise exc.StreamActionNotFound(self, action_name)
+            raise exc.StreamActionNotFoundError(self, action_name)
 
     def get_action(self, name):
         for action in self.actions:
@@ -53,7 +57,7 @@ class StreamBase:
         }
 
 
-class Stream(StreamBase):
+class Stream(Base):
     mapper_name = None
     db_id = 'main'
 
@@ -97,10 +101,8 @@ class Stream(StreamBase):
 
     @cached_property
     def mapper(self):
-        return self.component.app.db.mappers[self.db_id][self.mapper_name]
-
-    def tnx(self):
-        return self.component.app.db(self.db_id)
+        mappers = self.component.app.db.mappers
+        return mappers[self.db_id][self.mapper_name]
 
     def get_list_form(self, env):
         class ListForm(self.ListForm):
@@ -139,44 +141,6 @@ class Stream(StreamBase):
                 env.user, self.permissions),
         )
 
-    async def get_item(self, db, item_id, required=False):
-        items = await self.query().filter_by_id(item_id).execute(db)
-        if not items:
-            if required:
-                raise exc.StreamItemNotFound(self, item_id)
-            else:
-                return None
-        assert len(items) == 1, \
-               'There are {} items with id={}'.format(len(items), item_id)
-        return items[0]
-
-    async def create_item(self, db, values):
-        insert = self.mapper.insert(values.keys()).items([values])
-        result = await insert.execute(db)
-        return result[0]
-
-    async def update_item(self, tnx, item_id, values):
-        cnt = await self.mapper.update(values.keys()).\
-                            filter_by_id(item_id).\
-                            values(**values).\
-                            execute(tnx)
-        if not cnt:
-            raise exc.StreamItemNotFound(self, item_id)
-        assert cnt == 1, 'There are {} items with id={}'.format(cnt, item_id)
-        return values
-
-    async def delete_item(self, tnx, item_id):
-        cnt = await self.mapper.delete().filter_by_id(item_id).execute(tnx)
-        if not cnt:
-            raise exc.StreamItemNotFound(self, item_id)
-        assert cnt == 1, 'There are {} items with id={}'.format(cnt, item_id)
-
-    def check_perms(self, user, perms):
-        user_perms = self.component.app.auth.\
-            get_user_perms(user, self.permissions)
-        if not set(perms).issubset(user_perms):
-            raise exc.AccessDeniedError
-
 
 class I18nMixin:
 
@@ -189,8 +153,8 @@ class I18nMixin:
 
     def get_id(self, **kwargs):
         lang = kwargs.get('lang', self.lang)
-        id = super.get_id(**kwargs)
-        return '.'.join(lang, id)
+        id = super().get_id(**kwargs)
+        return '.'.join([lang, id])
 
     @classmethod
     def create(cls, component, registry, **kwargs):
@@ -203,8 +167,10 @@ class I18nMixin:
         return {lang: self.streams[self.get_id(lang=lang)] \
                 for lang in self.langs}
 
-    def get_mapper(self):
-        return self.component.db.mappers[self.db_id][self.lang][self.mapper_name]
+    @cached_property
+    def mapper(self):
+        mappers = self.component.app.db.mappers
+        return mappers[self.db_id][self.lang][self.mapper_name]
 
 
 class PublicationMixin:
@@ -223,8 +189,8 @@ class PublicationMixin:
 
     def get_id(self, **kwargs):
         db_id = kwargs.get('db_id', self.db_id)
-        id = super.get_id(**kwargs)
-        return '.'.join(db_id, id)
+        id = super().get_id(**kwargs)
+        return '.'.join([db_id, id])
 
     @classmethod
     def create(cls, component, registry, **kwargs):
@@ -233,14 +199,21 @@ class PublicationMixin:
             super().create(component, registry, db_id=db_id, **kwargs)
 
     @cached_property
-    def i18n_streams(self):
-        return {lang: self.streams[self.get_id(lang=lang)] \
-                for lang in self.langs}
-
-    def get_mapper(self):
-        return self.component.db.mappers[self.db_id][self.lang][self.mapper_name]
+    def pub_streams(self):
+        return {db_id: self.streams[self.get_id(db_id=db_id)] \
+                for db_id in self.db_ids}
 
     def set_permissions(self):
         allowed_perms = set(self.allowed_perms[self.db_ids.index(self.db_id)])
         self.permissions = {role: set(perms).intersection(allowed_perms) \
-            for role, perms in self.permissions}
+            for role, perms in self.permissions.items()}
+
+
+class I18nStream(I18nMixin, Stream):
+    pass
+
+class PubStream(PublicationMixin, Stream):
+    pass
+
+class PubI18nStream(PublicationMixin, I18nMixin, Stream):
+    pass

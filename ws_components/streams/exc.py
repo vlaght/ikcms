@@ -39,7 +39,7 @@ class StreamNotFound(StreamBaseError):
         )
 
 
-class StreamActionNotFound(StreamBaseError):
+class StreamActionNotFoundError(StreamBaseError):
     message = 'Action not found'
 
     def __init__(self, stream, action_name):
