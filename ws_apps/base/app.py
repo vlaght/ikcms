@@ -40,8 +40,7 @@ class App(AppBase):
         return self.client_envs.values()
 
     async def __call__(self, server, client_id):
-        env = self.env_class(self, server, client_id)
-        self.client_envs[client_id] = env
+        self.add_client(server, client_id)
         try:
             while True:
                 try:
@@ -58,8 +57,15 @@ class App(AppBase):
                     response = self.error_response(e, locals())
                 await server.send(client_id, response.to_json())
         finally:
-            del self.client_envs[client_id]
+            self.remove_client(client_id)
 
+    def add_client(self, server, client_id):
+        env = self.env_class(self, server, client_id)
+        self.client_envs[client_id] = env
+
+    def remove_client(self, client_id):
+        await self.client_envs[client_id].close()
+        del self.client_envs[client_id]
 
     def error_response(self, e, locals):
         request = locals.get('request')
@@ -69,4 +75,5 @@ class App(AppBase):
             request_id=request['request_id'],
             handler=request['handler'],
         )
+
 

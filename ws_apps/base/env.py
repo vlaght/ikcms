@@ -27,3 +27,6 @@ class Environment:
     async def ping(self):
         return self._server.ping(self._client_id)
 
+
+    async def close(self):
+        pass
