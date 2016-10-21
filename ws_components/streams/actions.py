@@ -17,9 +17,9 @@ class Base:
         self.stream = stream
 
     async def handle(self, env, raw_message):
-        self.stream.component.app.auth.check_perms(env.user, self.require_perms)
+        self.stream.check_perms(env, self.require_perms)
         message = self.MessageForm().to_python(raw_message)
-        return await self._handle(env, message)
+        return await self(env, message)
 
     async def _handle(self, env, message):
         raise NotImplementedError
@@ -43,7 +43,7 @@ class List(Base):
             message_fields.page_size,
         ]
 
-    async def _handle(self, env, message):
+    async def list(self, env, message):
         list_form = self.stream.get_list_form(env)
         filter_form = self.stream.get_filter_form(env)
         order_form = self.stream.get_order_form(env)
@@ -59,12 +59,16 @@ class List(Base):
         if not 0 < page_size <= self.stream.max_limit:
             raise exc.MessageError('Page size error')
         async with await env.app.db() as session:
-            query = self.query(env, filters, [order])
-            total = await query.count_items(session)
-
-            query = self.page_query(query, page, page_size)
-            list_items = await query.select_items(
-                session, keys=set(list_form.keys()))
+            list_items = await self.stream.list_items(
+                env,
+                session,
+                filters,
+                [order],
+                page,
+                page_size,
+                keys=set(list_form.keys()),
+            )
+            total = await self.stream.count_items(env, session, filters)
 
         raw_list_items = list_form.values_from_python(list_items)
 
@@ -82,32 +86,7 @@ class List(Base):
             'page': page,
             'order': message['order'],
         }
-
-    def query(self, env, filters=None, order=None):
-        filters = filters or {}
-        order = order or ['+id']
-
-        order_form = self.stream.get_order_form(env)
-        filter_form = self.stream.get_filter_form(env)
-
-        query = self.stream.query()
-
-        for name, field in filter_form.items():
-            query = field.filter(query, filters.get(name))
-
-        for value in order:
-            value, name = value[0], value[1:]
-            assert name in order_form
-            query = order_form[name].order(query, value)
-        return query
-
-    def page_query(self, query, page=1, page_size=1):
-        assert page > 0
-        assert 0 < page_size <= self.stream.max_limit
-        query = query.limit(page_size)
-        if page != 1:
-            query = query.offset((page-1)*page_size)
-        return query
+    __call__ = list
 
 
 class GetItem(Base):
@@ -120,21 +99,20 @@ class GetItem(Base):
             message_fields.item_id,
         ]
 
-    async def _handle(self, env, message):
+    async def get_item(self, env, message):
         item_id = message['item_id']
         async with await env.app.db() as session:
-            items = await self.stream.query().id(item_id).select_items(session)
-        if not items:
-            raise exc.StreamItemNotFound(self.stream, item_id)
-        assert len(items) == 1, \
-               'There are {} items with id={}'.format(len(items), item_id)
+            item = await self.stream.get_item(env, session, item_id)
+        if not item:
+            raise exc.StreamItemNotFoundError(self.stream, item_id)
 
-        item_fields_form = self.stream.get_item_form(env, item=items[0])
-        raw_item = item_fields_form.from_python(items[0])
+        item_fields_form = self.stream.get_item_form(env, item=item)
+        raw_item = item_fields_form.from_python(item)
         return {
             'item_fields': item_fields_form.get_cfg(),
             'item': raw_item,
         }
+    __call__ = get_item
 
 
 class NewItem(Base):
@@ -147,15 +125,16 @@ class NewItem(Base):
             message_fields.kwargs,
         ]
 
-    async def _handle(self, env, message):
-        item_fields_form = self.stream.get_item_form(
-            env, kwargs=message['kwargs'])
-        raw_item = item_fields_form.from_python(
-            item_fields_form.get_initials(**message['kwargs']))
+    async def new_item(self, env, message):
+        kwargs=message['kwargs']
+        item_fields_form = self.stream.get_item_form(env, kwargs)
+        item = await self.stream.new_item(env, kwargs)
+        raw_item = item_fields_form.from_python(item)
         return {
             'item_fields': item_fields_form.get_cfg(),
             'item': raw_item,
         }
+    __call__ = new_item
 
 
 class CreateItem(Base):
@@ -169,7 +148,7 @@ class CreateItem(Base):
             message_fields.kwargs,
         ]
 
-    async def _handle(self, env, message):
+    async def create_item(self, env, message):
         item_fields_form = self.stream.get_item_form(
             env, kwargs=message['kwargs'])
         raw_item = message['values']
@@ -179,16 +158,14 @@ class CreateItem(Base):
         item, errors = item_fields_form.to_python(raw_item, keys=keys)
         if not errors:
             async with await env.app.db() as session:
-                item = await self.stream.query().insert_item(
-                    session,
-                    item,
-                )
+                item = await self.stream.insert_item(env, session, item)
             raw_item = item_fields_form.from_python(item)
         return {
             'item_fields': item_fields_form.get_cfg(),
             'item': raw_item,
             'errors': errors,
         }
+    __call__ = create_item
 
 
 class UpdateItem(Base):
@@ -202,7 +179,7 @@ class UpdateItem(Base):
             message_fields.values,
         ]
 
-    async def _handle(self, env, message):
+    async def update_item(self, env, message):
         item_fields_form = self.stream.get_item_form(env)
         item_id = message['item_id']
         raw_values = message['values']
@@ -210,21 +187,19 @@ class UpdateItem(Base):
                                                     keys=raw_values.keys())
         if not errors:
             async with await env.app.db() as session:
-                try:
-                    item = await self.stream.query().update_item(
+                item = await self.stream.update_item(
+                        env,
                         session,
                         item_id,
                         values,
-                        keys=list(values.keys()),
-                    )
-                except orm.exc.ItemNotFoundError:
-                    raise exc.StreamItemNotFound(self, item_id)
+                )
         return {
             'item_fields': item_fields_form.get_cfg(),
             'item_id': raw_values.get('id', item_id),
             'values': raw_values,
             'errors': errors,
         }
+    __call__ = update_item
 
 
 class DeleteItem(Base):
@@ -237,16 +212,10 @@ class DeleteItem(Base):
             message_fields.item_id,
         ]
 
-    async def _handle(self, env, message):
+    async def delete_item(self, env, message):
         async with await env.app.db() as session:
-            try:
-                await self.stream.query().delete_item(
-                    session,
-                    message['item_id'],
-                )
-            except orm.exc.ItemNotFoundError:
-                raise exc.StreamItemNotFound(self, message['item_id'])
+            await self.stream.delete_item(env, session, message['item_id'])
         return {
             'item_id': message['item_id'],
         }
-
+    __call__ = delete_item

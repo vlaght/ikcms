@@ -141,6 +141,82 @@ class Stream(Base):
                 env.user, self.permissions),
         )
 
+    async def get_item(self, env, session, item_id, keys=None):
+        return await self.query().id(item_id).select_first_item(session, keys)
+
+    async def list_items(
+            self,
+            env,
+            session,
+            filters=None,
+            order=None,
+            page=None,
+            page_size=None,
+            keys=None,
+    ):
+
+        query = self.query()
+        query = self._filter_query(env, query, filters)
+        query = self._order_query(env, query, order)
+        query = self._page_query(env, query, page, page_size)
+        return await query.select_items(session, keys=keys)
+
+    async def count_items(self, env, session, filters=None):
+        query = self.query()
+        query = self._filter_query(env, query, filters)
+        return await query.count_items(session)
+
+    async def new_item(self, env, kwargs):
+        item_fields_form = self.get_item_form(env, kwargs=kwargs)
+        return item_fields_form.get_initials(**kwargs)
+
+    async def insert_item(self, env, session, item):
+        if 'id' in item:
+            if await self.is_item_exists(env, session, item['id']):
+                raise exc.StreamItemAlreadyExistsError(self, item['id'])
+        return await self.query().insert_item(session, item)
+
+    async def update_item(self, env, session, item_id, values):
+        keys = list(values.keys())
+        if not await self.is_item_exists(env, session, item_id):
+            raise exc.StreamItemNotFoundError(self, item_id)
+        return await self.query().update_item(session, item_id, values, keys)
+
+    async def delete_item(self, env, session, item_id):
+        if not await self.is_item_exists(env, session, item_id):
+            raise exc.StreamItemNotFoundError(self, item_id)
+        return await self.query().delete_item(session, item_id)
+
+    async def check_perms(env, perms):
+       return self.component.app.auth.check_perms(env.user, perms)
+
+    async def is_item_exists(self, env, session, item_id):
+        return bool(await self.get_item(env, session, item_id, ['id']))
+
+    def _filter_query(self, env, query, filters=None):
+        filters = filters or {}
+        filter_form = self.get_filter_form(env)
+        for name, field in filter_form.items():
+            query = field.filter(query, filters.get(name))
+        return query
+
+    def _order_query(self, env, query, order=None):
+        order = order or ['+id']
+        order_form = self.get_order_form(env)
+        for value in order:
+            value, name = value[0], value[1:]
+            assert name in order_form
+            query = order_form[name].order(query, value)
+        return query
+
+    def _page_query(self, env, query, page=1, page_size=1):
+        assert page > 0
+        assert 0 < page_size <= self.max_limit
+        query = query.limit(page_size)
+        if page != 1:
+            query = query.offset((page-1)*page_size)
+        return query
+
 
 class I18nMixin:
 

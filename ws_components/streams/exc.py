@@ -16,7 +16,7 @@ __all__ = (
     'StreamNotFound',
     'StreamActionNotFound',
     'StreamFieldNotFound',
-    'StreamItemNotFound',
+    'StreamItemNotFoundError',
     'StreamItemAlreadyExists',
 )
 
@@ -88,7 +88,7 @@ class StreamLimitError(StreamBaseError):
         )
 
 
-class StreamItemNotFound(StreamBaseError):
+class StreamItemNotFoundError(StreamBaseError):
 
     message = 'Item not found'
 
