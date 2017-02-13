@@ -26,13 +26,10 @@ class Component:
             for name in dir(self) if name.startswith('h_')
         }
 
-    def env_class(self, env_class):
+    def client_init(self, env):
         pass
 
-    def env_init(self, env):
-        pass
-
-    def env_close(self, env):
+    def client_close(self, env):
         pass
 
     @classmethod

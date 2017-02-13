@@ -2,7 +2,7 @@ import time
 from hashlib import md5
 
 
-class Environment:
+class Client:
 
     def __init__(self, app, server, client_id):
         self.app = app
@@ -18,14 +18,6 @@ class Environment:
     def remote_address(self):
         return self._server.get_remote_address(self._client_id)
 
-    async def send(self, value):
-        await self._server.send(self._client_id, value)
-
-    async def disconnect(self, code, reason):
-        return self._server.disconnect(self._client_id, code, reason)
-
-    async def ping(self):
-        return self._server.ping(self._client_id)
-
     async def close(self):
         pass
+

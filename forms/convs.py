@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from . import exc
+from . import exceptions
 
 
 __all__ = [
@@ -27,26 +27,32 @@ class Converter:
     def to_python(self, raw_value):
         if raw_value is None:
             if self.field.not_none:
-                raise exc.RawValueNoneNotAllowedError(self.field.name)
+                raise exceptions.RawValueNoneNotAllowedError(self.field.name)
             return None
         if self.raw_type:
             if isinstance(raw_value, self.raw_type):
                 return raw_value
             else:
-                raise exc.RawValueTypeError(self.field.name, self.raw_type)
+                raise exceptions.RawValueTypeError(
+                    self.field.name,
+                    self.raw_type,
+                )
         else:
             return raw_value
 
     def from_python(self, python_value):
         if python_value is None:
             if self.field.not_none:
-                raise exc.PythonValueNoneNotAllowedError(self.field.name)
+                raise exceptions.PythonValueNoneNotAllowedError(self.field.name)
             return None
         if self.python_type:
             if isinstance(python_value, self.python_type):
                 return python_value
             else:
-                raise exc.PythonValueTypeError(self.field.name, self.python_type)
+                raise exceptions.PythonValueTypeError(
+                    self.field.name,
+                    self.python_type,
+                )
         else:
             return python_value
 
@@ -85,7 +91,7 @@ class IntStr(Converter):
         try:
             return int(raw_value)
         except ValueError:
-            raise exc.ValidationError(self.error_not_valid)
+            raise exceptions.ValidationError(self.error_not_valid)
 
     def from_python(self, value):
         value = super().from_python(value)
@@ -112,10 +118,10 @@ class Dict(Converter):
         for subfield in self.field.fields:
             try:
                 python_dict.update(subfield.to_python(raw_dict))
-            except exc.ValidationError as e:
-                errors.update(e.error)
+            except exceptions.ValidationError as exc:
+                errors.update(exc.error)
         if errors:
-            raise exc.ValidationError(errors)
+            raise exceptions.ValidationError(errors)
         return python_dict
 
     def from_python(self, python_dict):
@@ -148,12 +154,12 @@ class List(Converter):
             try:
                 python_value = self.item_field.to_python({None: raw_value})[None]
                 python_list.append(python_value)
-            except exc.ValidationError as e:
-                errors.append(e.error[None])
+            except exceptions.ValidationError as exc:
+                errors.append(exc.error[None])
             else:
                 errors.append(None)
         if any(errors):
-            raise exc.ValidationError(errors)
+            raise exceptions.ValidationError(errors)
         return python_list
 
     def from_python(self, python_list):
@@ -175,8 +181,8 @@ class Date(Converter):
             return None
         try:
             return datetime.strptime(raw_value, self.field.format).date()
-        except ValueError as e:
-            raise exc.ValidationError(self.error_not_valid)
+        except ValueError:
+            raise exceptions.ValidationError(self.error_not_valid)
 
     def from_python(self, python_value):
         python_value = super().from_python(python_value)

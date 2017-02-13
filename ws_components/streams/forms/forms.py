@@ -1,6 +1,6 @@
 import ikcms.forms
 
-from .. import exc
+from .. import exceptions
 
 
 class Form(ikcms.forms.Form):
@@ -8,6 +8,8 @@ class Form(ikcms.forms.Form):
     def to_python(self, raw_value, keys=None):
         try:
             return super().to_python(raw_value, keys=keys)
-        except exc.RawValueError as e:
-            raise exc.MessageError(str(e))
+        except exceptions.RawValueError as exc:
+            raise exceptions.MessageError({
+                exc.kwargs['field_name']: exc.kwargs['error'],
+            })
 

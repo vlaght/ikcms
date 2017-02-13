@@ -3,7 +3,7 @@ from collections import OrderedDict
 from . import convs
 from . import validators
 from . import widgets
-from . import exc
+from . import exceptions
 
 
 __all__ = (
@@ -58,12 +58,12 @@ class Base:
 
     def from_python(self, python_value):
         if python_value is NOTSET:
-            raise exc.PythonValueRequiredError(self.name)
+            raise exceptions.PythonValueRequiredError(self.name)
         return self.conv.from_python(python_value)
 
     def _raw_value_notset(self):
         if self.raw_required:
-            raise exc.RawValueRequiredError(self.name)
+            raise exceptions.RawValueRequiredError(self.name)
         return self.to_python_default
 
     def get_initials(self, **kwargs):
@@ -77,8 +77,8 @@ class Field(Base):
         raw_value = raw_dict.get(self.name, NOTSET)
         try:
             python_value = super().to_python(raw_value)
-        except exc.ValidationError as e:
-            raise exc.ValidationError({self.name: e.error})
+        except exceptions.ValidationError as exc:
+            raise exceptions.ValidationError({self.name: exc.kwargs['error']})
         if python_value is NOTSET:
             return {}
         else:
@@ -156,8 +156,8 @@ class Block(Base):
         raw_value = raw_dict.get(self.name, NOTSET)
         try:
             python_value = super().to_python(raw_value)
-        except exc.ValidationError as e:
-            raise exc.ValidationError({self.name: e.error})
+        except exceptions.ValidationError as exc:
+            raise exceptions.ValidationError({self.name: exc.error})
         if python_value is NOTSET:
             return {}
         else:
