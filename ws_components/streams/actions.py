@@ -2,8 +2,7 @@ from ikcms.ws_apps.base.forms import MessageForm as MessageFormBase
 from ikcms import orm
 
 from .forms import message_fields
-from . import exc
-
+from . import exceptions
 
 
 class Base:
@@ -16,15 +15,18 @@ class Base:
         assert self.name is not None
         self.stream = stream
 
-    async def handle(self, env, raw_message):
-        self.stream.check_perms(env, self.require_perms)
-        message = self.MessageForm().to_python(raw_message)
-        return await self(env, message)
+    async def handle(self, client, raw_message):
+        self.stream.check_perms(client, self.require_perms)
+        try:
+            message = self.MessageForm().to_python_or_exc(raw_message)
+        except exceptions.MessageError as exc:
+            raise exceptions.ClientError(exc)
+        return await self(client, message)
 
     async def _handle(self, env, message):
         raise NotImplementedError
 
-    def get_cfg(self, env):
+    def get_cfg(self, client):
         return {
             'name': self.name
         }
@@ -49,7 +51,9 @@ class List(Base):
         order_form = self.stream.get_order_form(env)
         order = message['order']
         if order[1:] not in order_form:
-            raise exc.StreamFieldNotFound(self.stream, order[1:])
+            raise exceptions.ClientError(
+                exceptions.StreamFieldNotFound(self.stream.name, order[1:]),
+            )
 
         raw_filters = message['filters']
         filters, filters_errors = filter_form.to_python(raw_filters)
@@ -57,7 +61,9 @@ class List(Base):
         page_size = message['page_size']
 
         if not 0 < page_size <= self.stream.max_limit:
-            raise exc.MessageError('Page size error')
+            raise exceptions.ClientError(
+                exceptions.MessageError({'page_size':'Page size error'}),
+            )
         async with await env.app.db() as session:
             list_items = await self.stream.list_items(
                 env,
@@ -104,8 +110,9 @@ class GetItem(Base):
         async with await env.app.db() as session:
             item = await self.stream.get_item(env, session, item_id)
         if not item:
-            raise exc.StreamItemNotFoundError(self.stream, item_id)
-
+            raise exceptions.ClientError(
+                exceptions.StreamItemNotFoundError(self.stream.name, item_id)
+            )
         item_fields_form = self.stream.get_item_form(env, item=item)
         raw_item = item_fields_form.from_python(item)
         return {
@@ -155,7 +162,10 @@ class CreateItem(Base):
         keys = list(item_fields_form)
         if 'id' not in raw_item:
             keys.remove('id')
-        item, errors = item_fields_form.to_python(raw_item, keys=keys)
+        try:
+            item, errors = item_fields_form.to_python(raw_item, keys=keys)
+        except exceptions.MessageError as exc:
+            raise exceptions.ClientError(exc)
         if not errors:
             async with await env.app.db() as session:
                 item = await self.stream.insert_item(env, session, item)
@@ -183,16 +193,19 @@ class UpdateItem(Base):
         item_fields_form = self.stream.get_item_form(env)
         item_id = message['item_id']
         raw_values = message['values']
-        values, errors = item_fields_form.to_python(raw_values,
-                                                    keys=raw_values.keys())
+        keys=raw_values.keys()
+        values, errors = item_fields_form.to_python(raw_values, keys)
         if not errors:
             async with await env.app.db() as session:
-                item = await self.stream.update_item(
+                try:
+                    item = await self.stream.update_item(
                         env,
                         session,
                         item_id,
                         values,
-                )
+                    )
+                except exceptions.StreamItemNotFoundError as exc:
+                    raise exceptions.ClientError(exc)
         return {
             'item_fields': item_fields_form.get_cfg(),
             'item_id': raw_values.get('id', item_id),
@@ -214,7 +227,10 @@ class DeleteItem(Base):
 
     async def delete_item(self, env, message):
         async with await env.app.db() as session:
-            await self.stream.delete_item(env, session, message['item_id'])
+            try:
+                await self.stream.delete_item(env, session, message['item_id'])
+            except exceptions.StreamItemNotFoundError as exc:
+                raise exceptions.ClientError(exc)
         return {
             'item_id': message['item_id'],
         }

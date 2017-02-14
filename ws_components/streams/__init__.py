@@ -1,11 +1,11 @@
 import ikcms.ws_components.base
-from . import exc
+from . import exceptions
 from . import streams
 
 
 __all__ = (
     'component',
-    'exc',
+    'exceptions',
     'streams',
 )
 
@@ -38,7 +38,7 @@ class Component(ikcms.ws_components.base.Component):
         if stream:
             return await stream.h_action(env, message)
         else:
-            raise exc.StreamNotFound(stream_name)
+            raise exceptions.ClientError(exceptions.StreamNotFound(stream_name))
 
 
 component = Component.create_cls

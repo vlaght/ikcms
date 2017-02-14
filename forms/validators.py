@@ -1,6 +1,6 @@
 import re
 
-from . import exc
+from . import exceptions
 
 
 __all__ = (
@@ -23,7 +23,7 @@ class Validator:
 
     def error(self, message_name):
         message = getattr(self.field, message_name, getattr(self, message_name))
-        raise exc.ValidationError(message.format(validator=self))
+        raise exceptions.ValidationError(message.format(validator=self))
 
 
 class Required(Validator):

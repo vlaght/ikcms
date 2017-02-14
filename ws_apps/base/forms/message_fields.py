@@ -61,11 +61,19 @@ class message__required(fields.String):
     required = True
 
 
+class kwargs(fields.RawDict):
+    name = 'kwargs'
+    label = 'Ключевые аргументы'
+    to_python_default = {}
+    raw_required = False
+
+
 class body__error_required(body):
     conv = convs.Dict
     fields = [
         error__required,
         message__required,
+        kwargs,
     ]
     label = 'Teло сообщения об ошибке'
     raw_required = True

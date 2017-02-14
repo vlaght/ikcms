@@ -1,17 +1,19 @@
 from ikcms.forms import Form
 
-from .. import exc
+from .. import exceptions
 
 
 class MessageForm(Form):
 
-    def to_python(self, raw_value, keys=None):
+    def to_python_or_exc(self, raw_value, keys=None):
         try:
-            values, errors = super().to_python(raw_value, keys=keys)
+            values, errors = self.to_python(raw_value, keys=keys)
             if errors:
-                raise exc.MessageFieldsError(errors)
-        except exc.RawValueError as e:
-            raise exc.MessageError(str(e))
+                raise exceptions.MessageError(errors)
+        except exceptions.RawValueError as exc:
+            raise exceptions.MessageError(
+                errors={exc.kwargs['field_name']: exc.kwargs['error']},
+            )
         return values
 
 

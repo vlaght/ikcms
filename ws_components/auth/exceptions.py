@@ -1,11 +1,12 @@
-from ikcms.ws_apps.base import exc
+from ikcms.ws_apps.base import exceptions
 
+ClientError = exceptions.ClientError
 
-class AccessDeniedError(exc.BaseError):
+class AccessDeniedError(exceptions.BaseError):
     message = 'Access Denied'
 
 
-class InvalidCredentialsError(exc.BaseError):
+class InvalidCredentialsError(exceptions.BaseError):
     message = 'Invalid credentials'
 
 

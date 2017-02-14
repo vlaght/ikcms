@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import sqlalchemy as sa
 import ikcms.ws_components.db
-
+from ikcms.ws_apps.base.exceptions import ClientError
 
 def asynctest(coroutine):
     """ Asynctest decorator """
@@ -19,6 +19,7 @@ def asynctest(coroutine):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(awrapper(self))
     wrapper.__name__ = coroutine.__name__
+    wrapper.coroutine = coroutine
     return wrapper
 
 
@@ -114,3 +115,9 @@ async def create_db_component(DATABASES, registry):
     Component = ikcms.ws_components.db.component(mappers=registry)
     return await Component.create(app)
 
+
+def assert_client_error(test, ctx, test_exc):
+    exc = ctx.exception
+    client_error = ClientError(test_exc)
+    test.assertEqual(exc.error, client_error.error)
+    test.assertEqual(exc.kwargs, client_error.kwargs)

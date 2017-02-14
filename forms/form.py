@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from . import exc
+from . import exceptions
 from . import convs
 
 
@@ -30,8 +30,8 @@ class Form(OrderedDict):
         for name, field in self.list(keys):
             try:
                 python_dict.update(field.to_python(raw_dict))
-            except exc.ValidationError as e:
-                errors.update(e.error)
+            except exceptions.ValidationError as exc:
+                errors.update(exc.kwargs['error'])
         return python_dict, errors
 
     def from_python(self, python_values, keys=None):

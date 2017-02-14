@@ -2,7 +2,7 @@ from iktomi.utils import cached_property
 
 from .forms import Form
 from . import actions
-from . import exc
+from . import exceptions
 
 
 __all__ = (
@@ -42,7 +42,7 @@ class Base:
         if action:
             return action.handle(env, message)
         else:
-            raise exc.StreamActionNotFoundError(self, action_name)
+            raise exceptions.StreamActionNotFoundError(self, action_name)
 
     def get_action(self, name):
         for action in self.actions:
@@ -137,8 +137,10 @@ class Stream(Base):
             max_limit=self.max_limit,
             list_fields=list_form.get_cfg(),
             filter_fields=filter_form.get_cfg(),
-            permissions=self.component.app.auth.get_user_perms(
-                env.user, self.permissions),
+            permissions=list(self.component.app.auth.get_user_perms(
+                env.user,
+                self.permissions,
+            )),
         )
 
     async def get_item(self, env, session, item_id, keys=None):
@@ -173,21 +175,24 @@ class Stream(Base):
     async def insert_item(self, env, session, item):
         if 'id' in item:
             if await self.is_item_exists(env, session, item['id']):
-                raise exc.StreamItemAlreadyExistsError(self, item['id'])
+                raise exceptions.StreamItemAlreadyExistsError(
+                    self.name,
+                    item['id'],
+                )
         return await self.query().insert_item(session, item)
 
     async def update_item(self, env, session, item_id, values):
         keys = list(values.keys())
         if not await self.is_item_exists(env, session, item_id):
-            raise exc.StreamItemNotFoundError(self, item_id)
+            raise exceptions.StreamItemNotFoundError(self.name, item_id)
         return await self.query().update_item(session, item_id, values, keys)
 
     async def delete_item(self, env, session, item_id):
         if not await self.is_item_exists(env, session, item_id):
-            raise exc.StreamItemNotFoundError(self, item_id)
+            raise exceptions.StreamItemNotFoundError(self.name, item_id)
         return await self.query().delete_item(session, item_id)
 
-    async def check_perms(env, perms):
+    async def check_perms(self, env, perms):
        return self.component.app.auth.check_perms(env.user, perms)
 
     async def is_item_exists(self, env, session, item_id):
