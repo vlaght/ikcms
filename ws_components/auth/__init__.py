@@ -19,7 +19,7 @@ def restrict(role=None):
         async def wrapper(self, env, message):
             if not env.user:
                 raise exc.AccessDeniedError()
-            return
+            return await handler(self, env, message)
         return wrapper
     return wrap
 
@@ -99,16 +99,17 @@ class Component(ikcms.ws_components.base.Component):
 
     def get_user_roles(self, user):
         roles = set()
-        for group in user['groups']:
-            roles.update(group['roles'])
-        return roles
+        # TODO: It fails with TypeError
+        #for group in user['groups']:
+        #    roles.update(group['roles'])
+        return list(roles)
 
     def get_user_perms(self, user, permissions):
         perms = set()
         roles = self.get_user_roles(user)
         for role in roles:
             perms.update(permissions.get('role', []))
-        return perms
+        return list(perms)
 
     def check_perms(self, user, perms):
         user_perms = self.component.app.auth.\

@@ -69,12 +69,12 @@ class App(AppBase):
         del self.client_envs[client_id]
 
     def error_response(self, e, locals):
-        request = locals.get('request')
+        request = locals.get('request', {})
         return self.messages.Error(
             error=e.error,
             message=str(e),
-            request_id=request['request_id'],
-            handler=request['handler'],
+            request_id=request.get('request_id'),
+            handler=request.get('handler'),
         )
 
 
