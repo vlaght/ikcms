@@ -6,7 +6,7 @@ class Component(base.Component):
 
     DEFAULT_MEMCACHE_HOST = 'localhost'
     DEFAULT_MEMCACHE_PORT = 11211
-    prefix = b''
+    prefix = ''
 
     def __init__(self, app, client):
         super().__init__(app)

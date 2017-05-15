@@ -1,6 +1,7 @@
 import importlib
 
 from sqlalchemy.engine.url import make_url
+
 from iktomi.utils import cached_property
 
 import ikcms.ws_components.base
@@ -51,9 +52,11 @@ class Component(ikcms.ws_components.base.Component):
     async def __call__(self):
         return self.session_cls(self.engines, self.binds)
 
-    def close(self):
+    async def close(self):
         for engine in self.engines.values():
             engine.terminate()
+            await engine.wait_closed()
+
 
 component = Component.create_cls
 
