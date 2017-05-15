@@ -9,9 +9,8 @@ class BoundTemplate(BaseBoundTemplate):
         self.component = component
         self.env = env
 
-    def render(self, template_name, context=None):
-        context = context or {}
-        return self.component(template_name, self.get_template_vars(context))
+    def render(self, template_name, **context):
+        return self.component(template_name, **self.get_template_vars(context))
     __call__ = render
 
     def to_response(self, template_name, context=None):
@@ -22,9 +21,10 @@ class BoundTemplate(BaseBoundTemplate):
         )
 
     def get_template_vars(self, context):
-        vs = {'env': self.env}
-        if hasattr(self.env, 'get_template_vars'):
-            vs.update(self.env.get_template_vars())
+        storage = self.env._root_storage
+        vs = {'env': storage}
+        if hasattr(storage, 'get_template_vars'):
+            vs.update(storage.get_template_vars())
         vs.update(context)
         return vs
 
@@ -37,13 +37,13 @@ class RenderComponent(Component):
     def env_init(self, env):
         setattr(env, self.name, self.env_component_class(self, env))
 
-    def render(self, template_name, context=None):
+    def render(self, template_name, **context):
         raise NotImplementedError
     __call__ = render
 
     def to_response(self, name, context=None, content_type='text/html'):
         context = context or {}
-        result = self(name, context)
+        result = self.render(name, **context)
         return Response(result, content_type=content_type)
 
 

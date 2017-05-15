@@ -11,7 +11,7 @@ from iktomi.web import Reverse
 logger = logging.getLogger(__name__)
 
 
-class App:
+class App(object):
 
     def __init__(self, cfg):
         self.cfg = cfg

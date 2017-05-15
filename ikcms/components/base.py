@@ -1,4 +1,4 @@
-class Component:
+class Component(object):
 
     name = None
 

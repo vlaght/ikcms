@@ -11,11 +11,14 @@ class SQLAComponent(ikcms.components.db.base.DBComponent):
     query_class = Query
 
     def __init__(self, app, engines, models):
-        super().__init__(app)
+        super(SQLAComponent, self).__init__(app)
         self.engines = engines
         self.models = models
         self.binds = self.get_binds()
-        self.session_maker = self.session_maker_class(
+        self.session_maker = self.create_session_maker()
+
+    def create_session_maker(self):
+        return self.session_maker_class(
             binds=self.binds,
             query_cls=self.query_class,
         )
@@ -37,7 +40,7 @@ class SQLAComponent(ikcms.components.db.base.DBComponent):
         return engine
 
     def env_init(self, env):
-        env.db = self()
+        setattr(env, self.name, self())
         #env.models = self.env_models
 
     def env_close(self, env):
