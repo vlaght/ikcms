@@ -1,9 +1,12 @@
 from setuptools import setup
+from setuptools import find_packages
 
 setup(
     name='ikcms',
     version='0.1',
-    packages=['ikcms'],
+    packages=find_packages(),
+    package_dir={'ikcms': 'ikcms'},
+    scripts=['bin/ikmanage'],
     test_suite='nose.collector',
     tests_require=['nose'],
     install_requires=[
@@ -11,6 +14,7 @@ setup(
         'webob', #necessary for iktomi
         'sqlalchemy', #necessary for iktomi
         'iktomi',
+        'PyYAML',
     ],
     extras_require={
         'mysql': ['PyMySQL'],
