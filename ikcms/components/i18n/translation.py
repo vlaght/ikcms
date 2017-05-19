@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import os, warnings
+import os
+import warnings
+
+import six
 from gettext import c2py
 from babel import Locale
 from babel.support import Translations
@@ -34,7 +37,7 @@ class POTranslations(Translations):
 
 
 def get_translations(dirname, locale, categories='messages'):
-    if isinstance(categories, basestring):
+    if isinstance(categories, six.string_types):
         categories = [categories]
 
     # caching translations object

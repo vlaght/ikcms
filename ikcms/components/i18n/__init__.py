@@ -87,6 +87,8 @@ class Component(base.Component):
     categories = []
     lang_class = Lang
 
+    DEFAULT_TIMEZONE = 'Europe/Moscow'
+
     DATE_FORMATS = {
         'ru': u"d MMMM y 'года'",
         'en': u"MMMM d, y",
@@ -125,7 +127,8 @@ class Component(base.Component):
 
     def __init__(self, app):
         super(Component, self).__init__(app)
-        self.timezone = timezone(app.cfg.TIMEZONE)
+        tz_str = getattr(app.cfg, 'TIMEZONE', self.DEFAULT_TIMEZONE)
+        self.timezone = timezone(tz_str)
         self.translations_dir = self.translations_dir.format(**app.cfg.as_dict())
         self.translations = {lang: self._get_translations(lang) \
             for lang in self.langs}
@@ -156,16 +159,16 @@ class Component(base.Component):
 
     def date(self, locale, dt, **kwargs):
         optional_year = kwargs.get('optional_year', False)
-	format = self.DATE_FORMATS[locale]
+        format = self.DATE_FORMATS[locale]
         if optional_year:
             today = datetime.date.today()
             if today.year == dt.year and (today.month, dt.month) != (12, 1):
-		format = self.DATE_FORMATS_NO_YEAR[locale]
+                format = self.DATE_FORMATS_NO_YEAR[locale]
         return babel.dates.format_date(dt, format, locale=locale)
 
     def datetime(self, locale, dt, **kwargs):
         optional_year = kwargs.get('optional_year', False)
-	format = self.DATETIME_FORMATS[locale]
+        format = self.DATETIME_FORMATS[locale]
         relative = kwargs.get('relative', False)
         if relative:
             delta = datetime.datetime.now() - dt
@@ -178,7 +181,7 @@ class Component(base.Component):
         if optional_year:
             today = datetime.date.today()
             if today.year == dt.year and (today.month, dt.month) != (12, 1):
-		format = self.DATETIME_FORMATS_NO_YEAR[locale]
+                format = self.DATETIME_FORMATS_NO_YEAR[locale]
         return babel.dates.format_datetime(dt, format, locale=locale)
 
     def daterange(self, locale, start_dt, end_dt, **kwargs):

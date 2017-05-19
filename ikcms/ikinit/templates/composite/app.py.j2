@@ -1,0 +1,44 @@
+import ikcms.apps.composite
+{%- if 'memcache' in options %}
+import ikcms.components.cache.mcache
+{%- endif -%}
+{%- if 'db' in options %}
+import ikcms.components.db.sqla
+{%- endif -%}
+{%- if 'jinja2' in options %}
+import ikcms.components.render.jinja2
+{%- endif -%}
+{%- if 'i18n' in options %}
+import ikcms.components.i18n
+{%- endif %}
+import ikcms.cli.app
+
+
+class App(ikcms.apps.composite.App):
+
+    components = [
+{%- if 'memcache' in options %}
+        ikcms.components.cache.mcache.component(),
+{%- endif -%}
+{%- if 'db' in options %}
+        ikcms.components.db.sqla.component(),
+{%- endif -%}
+{%- if 'jinja2' in options %}
+        ikcms.components.render.jinja2.component(),
+{%- endif -%}
+{%- if 'i18n' in options %}
+        ikcms.components.i18n.component(),
+{%- endif %}
+    ]
+
+    commands = {
+        '{{ name }}': ikcms.cli.app.AppCli,
+    }
+
+    def get_handler(self):
+        from .handler import get_handler
+        return get_handler(self)
+
+    def get_env_class(self):
+        from .env import Environment
+        return Environment

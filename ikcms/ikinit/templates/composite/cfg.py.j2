@@ -1,0 +1,19 @@
+import ikcms.apps.composite
+
+class Cfg(ikcms.apps.composite.Cfg):
+    SITE_ID = '{{ name }}'
+
+{% if 'db' in options %}
+    DATABASES = {
+    }
+
+    DATABASE_PARAMS = {
+        'pool_size': 10,
+        'max_overflow': 50,
+        'pool_recycle': 3600,
+    }
+{%- endif %}
+
+{% if 'memcache' in options %}
+    MEMCACHE = ['127.0.0.1:11211']
+{%- endif %}

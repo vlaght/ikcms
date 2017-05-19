@@ -7,11 +7,17 @@ from iktomi.utils.storage import VersionedStorage
 from iktomi.web.app import is_host_valid
 from iktomi.web import Reverse
 
+import ikcms.cli.app
+
 
 logger = logging.getLogger(__name__)
 
 
 class App(object):
+
+    commands = {
+        'app': ikcms.cli.app.AppCli,
+    }
 
     def __init__(self, cfg):
         self.cfg = cfg

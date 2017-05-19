@@ -13,11 +13,11 @@ def manage(apps, paths=[]):
 
     for name in apps:
         module = __import__(name)
-        app = getattr(module, 'App', None)
-        cfg = getattr(module, 'Cfg', None)
-        if app is not None and cfg is not None:
-            for prefix, cli in getattr(app, 'commands', {}).items():
-                commands[prefix] = iktomi.cli.lazy.LazyCli(
-                    lambda cli=cli, app=app, cfg=cfg: cli(app, cfg))
+        App = module.App
+        Cfg = module.Cfg
+        for prefix, cli in getattr(App, 'commands', {}).items():
+            commands[prefix] = iktomi.cli.lazy.LazyCli(
+                lambda cli=cli, App=App, Cfg=Cfg: cli(App, Cfg),
+            )
 
     iktomi.cli.manage(commands)

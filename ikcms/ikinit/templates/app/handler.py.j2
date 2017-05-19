@@ -1,0 +1,11 @@
+from iktomi.web import match
+
+from . import views
+
+
+__all__ = ['get_handler']
+
+
+def get_handler(app):
+    return match('/') | views.h_index
+
