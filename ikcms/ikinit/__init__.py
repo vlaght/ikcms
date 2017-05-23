@@ -4,6 +4,7 @@ import argparse
 
 import jinja2
 import yaml
+import jsonschema
 
 
 def _resource_tree(package, resource):
@@ -39,33 +40,60 @@ def render(res, res_dir, target_dir='', kwargs={}):
             print('{} created'.format(target_path))
 
 
-def read_apps_yaml():
-    try:
-        with open('apps.yaml') as f:
-            apps_cfg = yaml.load(f)
-        return apps_cfg
-    except OSError:
-        print("Can't open file {}".format(filepath))
-        sys.exit()
+class AppsCfg(dict):
+
+    DEFAULT_FILEPATH = 'apps.yaml'
+
+    schema = {
+        "type": "object",
+        "properties": {
+            "apps" : {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                },
+            },
+            "paths" : {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                },
+            },
+        },
+        "required": ["apps"],
+    }
+
+    def __new__(cls, **kwargs):
+        self = dict.__new__(cls)
+        self.update(kwargs)
+        self.setdefault('apps', [])
+        self.setdefault('paths', [])
+        return self
+
+    @classmethod
+    def validate(cls, cfg):
+        return jsonschema.validate(cfg, cls.schema)
+
+    @classmethod
+    def load(cls, filepath=None):
+        try:
+            with open(filepath or cls.DEFAULT_FILEPATH) as f:
+                cfg = yaml.load(f)
+        except OSError:
+            print("Can't open file {}".format(filepath))
+            sys.exit()
+        cls.validate(cfg)
+        return cls(**cfg)
 
 
-def write_apps_yaml(cfg):
-    try:
-        with open('apps.yaml', 'w') as f:
-            yaml.dump(cfg, f)
-    except OSError:
-        print("Can't open file {}".format(filepath))
-        sys.exit()
-
-
-def add_app_to_cfg(name):
-    apps_cfg = read_apps_yaml()
-    apps = apps_cfg.get('apps')
-    apps = apps and list(apps) or []
-    if name not in apps:
-        apps.append(name)
-    apps_cfg['apps'] = apps
-    write_apps_yaml(apps_cfg)
+    def store(self, filepath=None):
+        self.validate(self)
+        try:
+            with open(filepath or self.DEFAULT_FILEPATH, 'w') as f:
+                yaml.dump(dict(self), f, default_flow_style=False)
+        except OSError:
+            print("Can't open file {}".format(filepath))
+            sys.exit()
 
 
 class Command(object):
@@ -92,6 +120,11 @@ class InitCommand(Command):
 
 
     def __call__(self, **kwargs):
+        if os.path.exists(AppsCfg.DEFAULT_FILEPATH):
+            print('Error: {} exists', AppsCfg.DEFAULT_FILEPATH)
+            sys.exit()
+        AppsCfg().store()
+        print('{} created'.format(AppsCfg.DEFAULT_FILEPATH))
         render('ikcms', 'ikinit/templates/init')
 
 
@@ -112,7 +145,10 @@ class AppCommand(Command):
             return
         os.mkdir(name)
         render('ikcms', 'ikinit/templates/app', name, dict(name=name))
-        add_app_to_cfg(name)
+        apps_cfg = AppsCfg.load()
+        if name not in apps_cfg['apps']:
+            apps_cfg['apps'].append(name)
+        apps_cfg.store()
 
 
 class CompositeCommand(Command):
@@ -150,7 +186,10 @@ class CompositeCommand(Command):
             name,
             dict(options=options, name=name),
         )
-        add_app_to_cfg(name)
+        apps_cfg = AppsCfg.load()
+        if name not in apps_cfg['apps']:
+            apps_cfg['apps'].append(name)
+        apps_cfg.store()
 
 
 COMMANDS = [

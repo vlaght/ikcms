@@ -22,6 +22,7 @@ setup(
         'iktomi',
         'PyYAML',
         'jinja2', #necessary for ikinit
+        'jsonschema',
     ],
     include_package_data=True,
     extras_require={
