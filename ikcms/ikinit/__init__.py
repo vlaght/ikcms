@@ -163,6 +163,7 @@ class CompositeCommand(Command):
         parser.add_argument('--db', action='store_true')
         parser.add_argument('--jinja2', action='store_true')
         parser.add_argument('--memcache', action='store_true')
+        parser.add_argument('--redis', action='store_true')
         parser.add_argument('--i18n', action='store_true')
 
     def __call__(self, **kwargs):
@@ -174,6 +175,8 @@ class CompositeCommand(Command):
             options.append('jinja2')
         if kwargs['memcache']:
             options.append('memcache')
+        if kwargs['redis']:
+            options.append('redis')
         if kwargs['i18n']:
             options.append('i18n')
         if os.path.exists(name):

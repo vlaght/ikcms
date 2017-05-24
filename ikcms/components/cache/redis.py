@@ -1,4 +1,6 @@
+from __future__ import absolute_import
 import redis
+
 from . import base
 
 
@@ -8,7 +10,7 @@ class Component(base.Component):
     DEFAULT_REDIS_PORT = 6379
 
     def __init__(self, app, client):
-        super().__init__(app)
+        super(Component, self).__init__(app)
         self.client = client
 
     @classmethod

@@ -2,6 +2,9 @@ import ikcms.apps.composite
 {%- if 'memcache' in options %}
 import ikcms.components.cache.mcache
 {%- endif -%}
+{%- if 'redis' in options %}
+import ikcms.components.cache.redis
+{%- endif -%}
 {%- if 'db' in options %}
 import ikcms.components.db.sqla
 {%- endif -%}
@@ -19,6 +22,9 @@ class App(ikcms.apps.composite.App):
     components = [
 {%- if 'memcache' in options %}
         ikcms.components.cache.mcache.component(),
+{%- endif -%}
+{%- if 'redis' in options %}
+        ikcms.components.cache.redis.component(),
 {%- endif -%}
 {%- if 'db' in options %}
         ikcms.components.db.sqla.component(),
