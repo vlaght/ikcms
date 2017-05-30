@@ -2,7 +2,21 @@ import sys
 from setuptools import setup
 from setuptools import find_packages
 
+try:
+    from babel.messages import frontend as babel
+    BABEL = True
+except:
+    BABEL = False
+
 PY3 = sys.version_info >= (3,0)
+
+cmdclass = {}
+if BABEL:
+    cmdclass.update({
+        'extract_messages': babel.extract_messages,
+        'init_catalog': babel.init_catalog,
+        'update_catalog': babel.update_catalog,
+    })
 
 
 setup(
@@ -36,5 +50,12 @@ setup(
         'redis': ['redis'],
         'aioredis': ['aioredis'],
     },
-    package_data={'ikcms': ['ikinit/templates/*/*.j2']},
+    package_data={'ikcms': [
+        'ikinit/templates/*/*.j2',
+        'locale/*/*.po',
+    ]},
+    cmdclass=cmdclass,
+    message_extractors={
+        'ikcms': [('**.py', 'python', None)],
+    },
 )

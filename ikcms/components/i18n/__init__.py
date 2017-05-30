@@ -1,16 +1,23 @@
 # coding: utf8
+import os
+import logging
 import datetime
-from pytz import timezone
+import warnings
+from collections import OrderedDict
 
+from pytz import timezone
 from babel.support import Format
 import babel.dates
 from babel import Locale
 from jinja2 import Markup
-from iktomi.utils import cached_property
+from ikcms.utils import cached_property
 
 from .. import base
 from . import handlers
-from .translation import get_translations
+from .catalog import POCatalog
+from .cli import Cli
+
+logger = logging.getLogger(__name__)
 
 
 class Lang(str):
@@ -83,7 +90,7 @@ class Component(base.Component):
 
     name = 'i18n'
     langs = ['ru', 'en']
-    translations_dir = '{ROOT_DIR}/i18n'
+    locale_dir = 'locale'
     categories = []
     lang_class = Lang
 
@@ -125,21 +132,45 @@ class Component(base.Component):
         },
     }
 
+    method_map = [
+        ('**.py', 'python'),
+        ('**.html', 'jinja2.ext:babel_extract'),
+    ]
+
+    options_map = {
+        '**.html': {},
+        '**.py': {},
+    }
+
+    @cached_property
+    def catalogs(self):
+        site_id = self.app.cfg.SITE_ID
+        return [
+            {
+                'name': site_id,
+                'input-dirs': [site_id],
+                'pot-file': 'locale/{}.pot'.format(site_id),
+                'po-files': {lang: 'locale/{}/{}.po'.format(lang, site_id) \
+                    for lang in self.langs},
+            },
+            {
+                'name': 'ikcms',
+                'package': 'ikcms',
+                'po-files': {
+                    'ru': 'locale/ru/messages.po',
+                    'en': 'locale/en/messages.po',
+                },
+            },
+        ]
+
+
     def __init__(self, app):
         super(Component, self).__init__(app)
         tz_str = getattr(app.cfg, 'TIMEZONE', self.DEFAULT_TIMEZONE)
         self.timezone = timezone(tz_str)
-        self.translations_dir = self.translations_dir.format(**app.cfg.as_dict())
-        self.translations = {lang: self._get_translations(lang) \
-            for lang in self.langs}
-        self.langs = {lang: self.lang_class(self, lang) for lang in self.langs}
-
-    def _get_translations(self, lang):
-        return get_translations(
-            self.translations_dir,
-            lang,
-            self.categories,
-        )
+        self._create_catalogs()
+        self._create_translations()
+        self._create_langs()
 
     def set_lang(self, env, lang):
         assert lang in self.langs
@@ -199,5 +230,47 @@ class Component(base.Component):
     def isodate(self, dt):
         return self.timezone.localize(dt).isoformat()
 
+    def _create_catalogs(self):
+        catalogs_cfg = self.catalogs
+        self.catalogs = OrderedDict()
+        for catalog_cfg in catalogs_cfg:
+            name = catalog_cfg['name']
+            package = catalog_cfg.get('package')
+            if package:
+                po_files = catalog_cfg['po-files']
+            else:
+                po_files = {lang: self.app.cfg.path(fpath) \
+                    for lang, fpath in catalog_cfg['po-files'].items()}
+            input_dirs = [self.app.cfg.path(dirpath) \
+                for dirpath in catalog_cfg.get('input-dirs', [])]
+            pot_file = catalog_cfg.get('pot-file')
+            if pot_file:
+                pot_file = self.app.cfg.path(pot_file)
+
+            catalog = POCatalog(
+                name,
+                po_files=po_files,
+                package=package,
+                input_dirs=input_dirs,
+                pot_file=pot_file,
+                method_map=self.method_map,
+                options_map=self.options_map,
+            )
+            self.catalogs[name] = catalog
+
+    def _create_translations(self):
+        self.translations = {}
+        for lang in self.langs:
+            translations = POCatalog.Translations(None, lang)
+            for name, catalog in self.catalogs.items():
+                catalog_translations = catalog.get_translations(lang)
+                if catalog_translations:
+                    translations.add(catalog_translations)
+            self.translations[lang] = translations
+
+    def _create_langs(self):
+        self.langs = {lang: self.lang_class(self, lang) for lang in self.langs}
 
 component = Component.create_cls
+
+

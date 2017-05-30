@@ -96,3 +96,6 @@ class Cfg(object):
                 continue
             result[key] = prop
         return result
+
+    def path(self, path):
+        return os.path.join(self.ROOT_DIR, path)
