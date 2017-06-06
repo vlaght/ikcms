@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.query import Query
@@ -29,7 +30,9 @@ class SQLAComponent(ikcms.components.db.base.DBComponent):
         database_params = getattr(app.cfg, 'DATABASE_PARAMS', {})
         engines = {}
         for db_id, url in databases.items():
-            engines[db_id] = cls.create_engine(db_id, url, database_params)
+            engine = cls.create_engine(db_id, url, database_params)
+            engines[db_id] = engine
+            engine.logger = logging.getLogger('sqlalchemy.engine.[%s]' % db_id)
         models = {db_id: cls.get_models(db_id) for db_id in databases}
         return cls(app, engines, models)
 
