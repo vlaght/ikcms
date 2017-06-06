@@ -32,7 +32,7 @@ setup(
         'pytz',
         'babel',
         'webob', #necessary for iktomi
-        'sqlalchemy', #necessary for iktomi
+        'sqlalchemy==1.0.17', #necessary for iktomi
         'iktomi',
         'PyYAML',
         'jinja2', #necessary for ikinit
