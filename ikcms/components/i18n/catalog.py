@@ -48,37 +48,32 @@ class POCatalog(object):
             self,
             name,
             po_files,
-            package=None,
             input_dirs=[],
             pot_file=None,
             method_map=[],
             options_map={},
         ):
-        assert not package or (not input_dirs and not pot_file)
         assert not (bool(input_dirs) ^ bool(pot_file))
         self.name = name
         self.po_files = po_files.copy()
-        self.package = package
         self.input_dirs = list(input_dirs)
         self.pot_file = pot_file
         self.method_map = method_map
         self.options_map = options_map
-        self.read_only = not input_dirs
 
     def extract(self):
-        if self.read_only:
+        if not self.input_dirs:
             return
         logger.info('Processing catalog "%s"', self.name)
-
         catalog = Catalog()
         for dirpath in self.input_dirs:
             extracted = extract_from_dir(
-                dirpath,
+                str(dirpath),
                 self.method_map,
                 self.options_map,
             )
             for filename, lineno, message, comments, context in extracted:
-                fpath = os.path.join(dirpath, filename)
+                fpath = dirpath.join(filename)
                 logger.info('Extracting messages from %s', fpath)
                 catalog.add(
                     message,
@@ -87,26 +82,30 @@ class POCatalog(object):
                     auto_comments=comments,
                     context=context,
                 )
-        logger.info('Writing PO template file to %s', self.pot_file)
-        pot_file_dir = os.path.dirname(self.pot_file)
-        if not os.path.isdir(pot_file_dir):
-            os.makedirs(pot_file_dir)
-        with open(self.pot_file, 'w') as pot_fp:
+
+        logger.info('Writing PO template file to %s', str(self.pot_file))
+        self.pot_file.makedirs()
+        with self.pot_file.open('w') as pot_fp:
             write_po(pot_fp, catalog, omit_header=True)
 
     def merge(self):
-        if self.read_only:
+        if not self.input_dirs:
             return
         logger.info('Processing catalog "%s"', self.name)
-        if not os.path.exists(self.pot_file):
-            logger.warning("POT template file %s doesn't exist", self.pot_file)
+        if not self.pot_file.exists():
+            logger.warning(
+                "POT template file %s doesn't exist",
+                str(self.pot_file),
+            )
             return
         for lang, po_file in self.po_files.items():
-            with open(self.pot_file) as pot_fp:
+            if po_file.isreadonly():
+                raise ValueError('File is readonly', str(po_file))
+            with self.pot_file.open() as pot_fp:
                 template = read_po(pot_fp, locale=lang)
-            if os.path.exists(po_file):
+            if po_file.exists():
                 logger.info('Merging template to PO file %s', po_file)
-                with open(po_file) as po_fp:
+                with po_file.open('U') as po_fp:
                     catalog = read_po(po_fp, locale=lang)
                 catalog.update(template)
             else:
@@ -115,28 +114,22 @@ class POCatalog(object):
                 catalog = template
                 catalog.locale = Locale.parse(lang)
                 catalog.fuzzy = False
-            tmp_file = po_file + '.new'
-            po_file_dir = os.path.dirname(po_file)
-            if not os.path.isdir(po_file_dir):
-                os.makedirs(po_file_dir)
+            tmp_file = str(po_file) + '.new'
+            po_file.makedirs()
             with open(tmp_file, 'wb') as tmp_fp:
                 write_po(tmp_fp, catalog, omit_header=True)
-            os.rename(tmp_file, po_file)
+            os.rename(tmp_file, str(po_file))
 
     def get_translations(self, lang):
         po_file = self.po_files.get(lang)
         if not po_file:
             return None
-        if self.package:
-            po_fp = resource_stream(self.package, po_file)
-        else:
-            if os.path.isfile(po_file):
-                po_fp = open(po_file, 'U')
-            else:
-                warnings.warn("File {} doesn't exist".format(po_file))
-                return None
-        translations = POTranslations(po_fp, lang)
-        po_fp.close()
+        if not po_file.exists():
+            warnings.warn("File {} doesn't exist".format(po_file))
+            print po_file.scheme
+            return None
+        with po_file.open('U') as po_fp:
+            translations = POTranslations(po_fp, lang)
         return translations
 
 

@@ -155,10 +155,9 @@ class Component(base.Component):
             },
             {
                 'name': 'ikcms',
-                'package': 'ikcms',
                 'po-files': {
-                    'ru': 'locale/ru/messages.po',
-                    'en': 'locale/en/messages.po',
+                    'ru': 'pkg://ikcms/locale/ru/messages.po',
+                    'en': 'pkg://ikcms/locale/en/messages.po',
                 },
             },
         ]
@@ -235,22 +234,17 @@ class Component(base.Component):
         self.catalogs = OrderedDict()
         for catalog_cfg in catalogs_cfg:
             name = catalog_cfg['name']
-            package = catalog_cfg.get('package')
-            if package:
-                po_files = catalog_cfg['po-files']
-            else:
-                po_files = {lang: self.app.cfg.path(fpath) \
-                    for lang, fpath in catalog_cfg['po-files'].items()}
-            input_dirs = [self.app.cfg.path(dirpath) \
+            po_files = {lang: self.app.cfg.filepath(path) \
+                    for lang, path in catalog_cfg['po-files'].items()}
+            input_dirs = [self.app.cfg.dirpath(dirpath, ['']) \
                 for dirpath in catalog_cfg.get('input-dirs', [])]
             pot_file = catalog_cfg.get('pot-file')
             if pot_file:
-                pot_file = self.app.cfg.path(pot_file)
+                pot_file = self.app.cfg.filepath(pot_file, [''])
 
             catalog = POCatalog(
                 name,
                 po_files=po_files,
-                package=package,
                 input_dirs=input_dirs,
                 pot_file=pot_file,
                 method_map=self.method_map,

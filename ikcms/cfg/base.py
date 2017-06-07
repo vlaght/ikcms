@@ -3,8 +3,11 @@ import sys
 import pwd
 import inspect
 import logging
+from urlparse import urlparse
 
-from iktomi.utils import cached_property
+from ikcms.utils import cached_property
+from ikcms.utils import FilePath
+from ikcms.utils import DirPath
 
 
 class Cfg(object):
@@ -97,5 +100,8 @@ class Cfg(object):
             result[key] = prop
         return result
 
-    def path(self, path):
-        return os.path.join(self.ROOT_DIR, path)
+    def filepath(self, path, schemes=None):
+        return FilePath(self, path, schemes=schemes)
+
+    def dirpath(self, path, schemes=None):
+        return DirPath(self, path, schemes=schemes)

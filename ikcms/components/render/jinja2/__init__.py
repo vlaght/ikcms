@@ -2,6 +2,7 @@ import os
 
 import jinja2
 
+from ikcms.utils import cached_property
 from ..base import RenderComponent
 from . import extensions
 
@@ -17,13 +18,16 @@ class Jinja2Component(RenderComponent):
         extensions.Macros,
     ]
     autoescape = True
-    paths = ['{SITE_DIR}/templates']
     default_file_ext = 'html'
 
     def __init__(self, app):
         super(Jinja2Component, self).__init__(app)
-        self.paths = [path.format(**app.cfg.as_dict()) for path in self.paths]
+        self.paths = [self.app.cfg.dirpath(path) for path in self.paths]
         self._env = self._make_env()
+
+    @cached_property
+    def paths(self):
+        return ['{}/templates'.format(self.app.cfg.SITE_DIR)]
 
     def resolve(self, name):
         base, ext = os.path.splitext(name)
@@ -32,10 +36,19 @@ class Jinja2Component(RenderComponent):
         return name
 
     def _make_env(self):
+        loaders = []
+        for path in self.paths:
+            if path.scheme == '':
+                loaders.append(jinja2.FileSystemLoader(path.url.path))
+            elif path.scheme == 'pkg':
+                loaders.append(
+                    jinja2.PackageLoader(path.url.package, path.url.path),
+                )
         env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(self.paths),
+            loader=jinja2.ChoiceLoader(loaders),
             autoescape=self.autoescape,
-            extensions=self.extensions)
+            extensions=self.extensions,
+        )
         env.filters.update(self.filters)
         env.globals.update(self.globals)
         return env
