@@ -1,0 +1,15 @@
+import ikcms.apps.admin
+
+class Cfg(ikcms.apps.admin.Cfg):
+    SITE_ID = '{{ name }}'
+
+    DATABASES = {
+        'admin': 'mysql://root@localhost/admin?charset=utf8',
+        'front': 'mysql://root@localhost/front?charset=utf8',
+        'shared': 'mysql://root@localhost/shared?charset=utf8',
+        'flood': 'mysql://root@localhost/flood?charset=utf8',
+    }
+
+
+
+

@@ -1,3 +1,4 @@
+# coding: utf8 
 import os
 import pkg_resources
 import argparse
@@ -36,9 +37,8 @@ def render(res, res_dir, target_dir='', kwargs={}):
                 return
             s = env.get_template(path).render(kwargs)
             with open(target_path, 'w') as f:
-                f.write(s)
+                f.write(s.encode('utf-8'))
             print('{} created'.format(target_path))
-
 
 class AppsCfg(dict):
 
@@ -195,10 +195,40 @@ class CompositeCommand(Command):
         apps_cfg.store()
 
 
+class AdminCommand(Command):
+
+    name = 'admin'
+    description='add admin app to project'
+    help='add admin app to project'
+
+
+    def args(self, parser):
+        parser.add_argument('name', nargs='?', default='admin')
+
+    def __call__(self, **kwargs):
+        name = kwargs['name']
+        if os.path.exists(name):
+            print('Error: {} already exists'.format(name))
+            return
+        os.mkdir(name)
+        render(
+            'ikcms',
+            'ikinit/templates/admin',
+            name,
+            dict(name=name),
+        )
+        apps_cfg = AppsCfg.load()
+        if name not in apps_cfg['apps']:
+            apps_cfg['apps'].append(name)
+        apps_cfg.store()
+
+
+
 COMMANDS = [
     InitCommand(),
     AppCommand(),
     CompositeCommand(),
+    AdminCommand(),
 ]
 
 

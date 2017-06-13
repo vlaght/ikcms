@@ -10,6 +10,7 @@ class SQLAComponent(ikcms.components.db.base.DBComponent):
 
     session_maker_class = sessionmaker
     query_class = Query
+    generator = None
 
     def __init__(self, app, engines, models):
         super(SQLAComponent, self).__init__(app)
@@ -85,6 +86,18 @@ class SQLAComponent(ikcms.components.db.base.DBComponent):
         self.drop_all()
         self.create_all()
 
+    def get_model(self, path):
+        paths = path.split('.')
+        models = self.models[paths[0]]
+        for p in paths:
+            model = getattr(models, p)
+        return model
+
+    def generate(self, names=None):
+        if self.generator:
+            self.generator(self, names)
+        else:
+            raise NotImplementedError
 
 component = SQLAComponent.create_cls
 

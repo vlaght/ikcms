@@ -1,0 +1,46 @@
+import ikcms.apps.admin
+import ikcms.components.cache.redis
+import ikcms.components.db.sqla
+import ikcms.components.render.jinja2
+import ikcms.components.i18n
+import ikcms.cli.app
+import ikcms.cli.db
+import ikcms.components.db.cli
+
+
+class App(ikcms.apps.admin.App):
+
+    components = [
+        ikcms.components.cache.redis.component(),
+        ikcms.apps.admin.components.db.component(),
+        ikcms.apps.admin.components.render.component(
+            paths=[
+                'pkg://iktomi.cms/templates',
+                'pkg://iktomi/templates/jinja2/templates',
+            ],
+        ),
+        ikcms.components.i18n.component(),
+    ]
+
+    commands = {
+        '{{ name }}': ikcms.cli.app.AppCli,
+        'db': ikcms.cli.db.DBCli,
+        'generator': ikcms.components.db.cli.GeneratorCli,
+    }
+
+    def get_env_class(self):
+        from .env import Environment
+        return Environment
+
+    def get_streams(self):
+        from .streams import streams
+        return streams
+
+    def get_dashboard(self, env):
+        from .menuconf import dashboard
+        return dashboard(env)
+
+    def get_top_menu(self, env):
+        from .menuconf import top_menu
+        return top_menu(env)
+
