@@ -27,26 +27,26 @@ def _create_image_file(file_manager, width, height):
     # return None
 
 
-class Generator(object):
+class GeneratorField(object):
     pass
 
 
-class FullName(Generator):
+class FullName(GeneratorField):
     def __call__(self, app):
         return randname()
 
 
-class FirstName(Generator):
+class FirstName(GeneratorField):
     def __call__(self, app):
         return randname().split(' ')[1]
 
 
-class LastName(Generator):
+class LastName(GeneratorField):
     def __call__(self, app):
         return randname().split(' ')[0]
 
 
-class Image(Generator):
+class Image(GeneratorField):
     def __init__(self, width=1600, height=900):
         self.width = width
         self.height = height
@@ -56,7 +56,7 @@ class Image(Generator):
         return _create_image_file(file_manager, self.width, self.height)
 
 
-class Date(Generator):
+class Date(GeneratorField):
     def __init__(self, years=None):
         self.years = years or [datetime.now().year - 1]
 
@@ -64,7 +64,7 @@ class Date(Generator):
         return datetime(choice(self.years), randint(1, 12), randint(1, 28))
 
 
-class Text(Generator):
+class Text(GeneratorField):
     def __init__(self, min_length=20, max_length=250, html=False):
         self.min_length = min_length
         self.max_length = max_length
@@ -80,7 +80,7 @@ class Text(Generator):
         return phrase()[:randint(self.max_length, self.max_length + 1)]
 
 
-class NumberedTitle(Generator):
+class NumberedTitle(GeneratorField):
     def __init__(self, title):
         self.title = title
 
@@ -93,7 +93,7 @@ class EHTMLText(Text):
         return ExpandableMarkup(super(EHTMLText, self).__call__(app))
 
 
-class Words(Generator):
+class Words(GeneratorField):
     def __init__(self, min_length=4, count=1):
         self.min_length = min_length
         self.count = count
@@ -111,7 +111,7 @@ class Slug(Words):
     pass
 
 
-class Constant(Generator):
+class Constant(GeneratorField):
     def __init__(self, value):
         self.value = value
 
@@ -119,7 +119,7 @@ class Constant(Generator):
         return self.value
 
 
-class Choice(Generator):
+class Choice(GeneratorField):
     def __init__(self, choices):
         self.choices = choices
 
@@ -132,7 +132,7 @@ class TrueOrFalse(Choice):
         self.choices = (True, False)
 
 
-class Relation(Generator):
+class Relation(GeneratorField):
     def __init__(self, model, multiple=False,
                  min_count=1, max_count=5, self_related=False):
         self.model = model
@@ -173,7 +173,7 @@ class Generate(object):
             for n in range(0, self.count):
                 plain_fields = {
                     k: v(app) for k, v in f_locals.iteritems() if
-                    isinstance(v, Generator) and not isinstance(v, Relation)
+                    isinstance(v, GeneratorField) and not isinstance(v, Relation)
                 }
                 relation_fields = {k: v(db) for k, v in f_locals.iteritems() if
                                    isinstance(v, Relation)}
@@ -217,7 +217,7 @@ class Update(Generate):
             for obj in db.query(self.model):
                 plain_fields = {
                     k: v(app) for k, v in f_locals.iteritems() if
-                    isinstance(v, Generator) and not isinstance(v, Relation)
+                    isinstance(v, GeneratorField) and not isinstance(v, Relation)
                 }
                 relation_fields = {k: v(db, obj.id) for k, v in
                                    f_locals.iteritems() if
