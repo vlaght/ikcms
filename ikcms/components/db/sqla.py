@@ -89,7 +89,7 @@ class SQLAComponent(ikcms.components.db.base.DBComponent):
     def get_model(self, path):
         paths = path.split('.')
         models = self.models[paths[0]]
-        for p in paths:
+        for p in paths[1:]:
             model = getattr(models, p)
         return model
 

@@ -9,3 +9,6 @@ from .handlers import h_prefix
 from .handlers import h_cases
 from .handlers import h_static_files
 from .view import BaseView
+from .view import HView
+from .view import viewhandler
+from .view import viewfilter

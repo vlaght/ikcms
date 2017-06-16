@@ -19,11 +19,14 @@ class Component(base.Component):
     def get(self, key):
         return self.client.get(self._key(key))
 
-    def set(self, key, value, expire=0):
-        return self.client.set(self._key(key), value, time=expire)
+    def set(self, key, value, expires=0):
+        return self.client.set(self._key(key), value, time=expires)
 
-    def delete(self, key):
-        return self.client.delete(self._key(key))
+    def add(self, key, value, expires=0):
+        return self.client.add(self._key(key), value, time=expires)
+
+    def delete(self, *keys):
+        return self.client.delete_multi([self._key(key) for key in keys])
 
     def _key(self, key):
         return self.prefix + key
