@@ -52,7 +52,10 @@ class BaseView(object):
         )
 
     def render_to_response(self, template, kwargs):
-        return self.env.response(self.render_to_string(template, **kwargs))
+        return self.env.render.to_response(
+            self.template_name(template),
+            dict(kwargs, view=self),
+        )
 
     def set_data(self, attr, value):
         setattr(self.env, '{}-{}'.format(self.name, attr), value)
