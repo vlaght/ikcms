@@ -12,10 +12,14 @@ class App(ikcms.apps.base.App):
         self.env_class = self.get_env_class()
         self.components = [
             component.create(self) for component in self.components]
-        for component in self.components:
-            component.env_class(self.env_class)
         self.handler = self.get_handler()
         self.root = self.get_root()
+
+    def get_request(self, environ):
+        request = self.Request(environ, charset='utf-8')
+        for component in self.components:
+            component.on_request(request)
+        return request
 
     def get_env_class(self):
         from .env import Environment

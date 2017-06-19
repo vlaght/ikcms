@@ -7,7 +7,7 @@ import ikcms.components.cache.redis
 import ikcms.components.db.cli
 import ikcms.components.i18n
 import ikcms.cli.app
-import ikcms.cli.db 
+import ikcms.cli.db
 
 from . import components
 

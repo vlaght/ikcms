@@ -43,11 +43,11 @@ class SQLAComponent(ikcms.components.db.base.DBComponent):
         engine.db_id = db_id
         return engine
 
-    def env_init(self, env):
+    def on_init_env(self, env):
         setattr(env, self.name, self())
         #env.models = self.env_models
 
-    def env_close(self, env):
+    def on_close_env(self, env):
         env.db.close()
 
     @staticmethod

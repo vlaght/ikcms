@@ -17,8 +17,14 @@ __all__ = (
 )
 
 
-h_not_found = exceptions.HTTPNotFound
-h_server_error = exceptions.HTTPInternalServerError
+@request_filter
+def h_not_found(env, data, next_handler=None):
+    return env.app.HTTPNotFound
+
+@request_filter
+def h_server_error(env, data, next_handler=None):
+    return env.app.HTTPInternalServerError
+
 h_prefix = iktomi.web.prefix
 h_cases = iktomi.web.cases
 

@@ -34,7 +34,7 @@ class RenderComponent(Component):
     name = 'render'
     env_component_class = BoundTemplate
 
-    def env_init(self, env):
+    def on_init_env(self, env):
         setattr(env, self.name, self.env_component_class(self, env))
 
     def render(self, template_name, **context):

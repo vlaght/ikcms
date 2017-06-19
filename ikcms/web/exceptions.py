@@ -1,3 +1,4 @@
+from webob.exc import HTTPException
 from webob.exc import HTTPNotFound
 from webob.exc import HTTPSeeOther
 from webob.exc import HTTPForbidden

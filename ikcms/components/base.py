@@ -12,13 +12,13 @@ class Component(object):
     def create(cls, app):
         return cls(app)
 
-    def env_class(self, env_class):
+    def on_request(self, request):
         pass
 
-    def env_init(self, env):
+    def on_init_env(self, env):
         pass
 
-    def env_close(self, env):
+    def on_close_env(self, env):
         pass
 
     @classmethod

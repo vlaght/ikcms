@@ -1,8 +1,6 @@
 import logging
-from webob import Request
-from webob.exc import HTTPException
-from webob.exc import HTTPInternalServerError
-from webob.exc import HTTPNotFound
+
+import ikcms.web
 from iktomi.utils.storage import VersionedStorage
 from iktomi.web.app import is_host_valid
 from iktomi.web import Reverse
@@ -14,6 +12,16 @@ logger = logging.getLogger(__name__)
 
 
 class App(object):
+
+    Request = ikcms.web.Request
+    Response = ikcms.web.Response
+
+    HTTPException = ikcms.web.exceptions.HTTPException
+    HTTPNotFound = ikcms.web.exceptions.HTTPNotFound
+    HTTPSeeOther = ikcms.web.exceptions.HTTPSeeOther
+    HTTPForbidden = ikcms.web.exceptions.HTTPForbidden
+    HTTPInternalServerError = ikcms.web.exceptions.HTTPInternalServerError
+    HTTPMethodNotAllowed = ikcms.web.exceptions.HTTPMethodNotAllowed
 
     commands = {
         'app': ikcms.cli.app.AppCli,
@@ -27,9 +35,18 @@ class App(object):
         self.handler = self.get_handler()
         self.root = self.get_root()
 
+    def get_request(self, environ):
+        return self.Request(environ, charset='utf-8')
+
     def get_env_class(self):
         from .env import Environment
         return Environment
+
+    def get_env(self, request):
+        return VersionedStorage(self.env_class, request=request, app=self)
+
+    def get_data(self):
+        return VersionedStorage()
 
     def get_handler(self):
         raise NotImplementedError
@@ -58,14 +75,14 @@ class App(object):
                 if response is None:
                     logger.debug('Application returned None '
                                  'instead of Response object')
-                    response = HTTPNotFound()
+                    response = self.HTTPNotFound()
             finally:
                 env.close()
-        except HTTPException as e:
+        except self.HTTPException as e:
             response = e
         except Exception as e:
             self.handle_error(env)
-            response = HTTPInternalServerError()
+            response = self.HTTPInternalServerError()
         return response
 
     def __call__(self, environ, start_response):
@@ -78,15 +95,15 @@ class App(object):
             logger.warning(
                 'Unusual header "Host: %s", return HTTPNotFound',
                 environ['HTTP_HOST'])
-            return HTTPNotFound()(environ, start_response)
-        request = Request(environ, charset='utf-8')
-        env = VersionedStorage(self.env_class, request=request, app=self)
-        data = VersionedStorage()
+            return self.HTTPNotFound()(environ, start_response)
+        request = self.get_request(environ)
+        env = self.get_env(request)
+        data = self.get_data()
         response = self.handle(env, data)
         try:
             result = response(environ, start_response)
         except Exception:
             self.handle_error(env)
-            result = HTTPInternalServerError()(environ, start_response)
+            result = self.HTTPInternalServerError()(environ, start_response)
         return result
 
