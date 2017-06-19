@@ -19,8 +19,15 @@ class Component(base.Component):
     def get(self, key):
         return self.client.get(self._key(key))
 
+    def mget(self, *keys):
+        return self.client.get_multi([self._key(key) for key in keys])
+
     def set(self, key, value, expires=0):
         return self.client.set(self._key(key), value, time=expires)
+
+    def mset(self, mapping):
+        mapping = dict([self._key(key), value for key, value in mapping.items()])
+        return self.client.set_multi(mapping)
 
     def add(self, key, value, expires=0):
         return self.client.add(self._key(key), value, time=expires)

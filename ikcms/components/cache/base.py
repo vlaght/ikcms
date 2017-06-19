@@ -12,7 +12,13 @@ class Component(ikcms.components.base.Component):
     def get(self, key):
         raise NotImplementedError
 
+    def mget(self, *keys):
+        raise NotImplementedError
+
     def set(self, key, value, expires=0):
+        raise NotImplementedError
+
+    def mset(self, mapping):
         raise NotImplementedError
 
     def add(self, key, value, expires=0):
