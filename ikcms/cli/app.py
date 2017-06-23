@@ -1,4 +1,5 @@
 import os
+import fnmatch
 import sys
 from multiprocessing import Process
 from iktomi.cli.app import App as _AppCli
@@ -11,24 +12,29 @@ from .base import Cli
 class AppCli(Cli):
     name = 'app'
 
-    def command_serve(self):
+    def command_serve(self, host=None, port=None):
 
-        def http_process():
+        def http_process(host, port):
             from wsgiref.simple_server import make_server
-            print('Staring HTTP server process...')
             app = self.create_app()
-            server = make_server(
-                app.cfg.HTTP_SERVER_HOST,
-                app.cfg.HTTP_SERVER_PORT,
-                app,
-            )
+            host = host or app.cfg.HTTP_SERVER_HOST
+            port = port and int(port) or app.cfg.HTTP_SERVER_PORT
+            print('Staring HTTP server {}:{}...'.format(host, port))
+            server = make_server(host, port, app)
             server.serve_forever()
 
-        p1 = Process(target=http_process)
+        p1 = Process(target=http_process, args=(host, port))
         p1.start()
 
+        cfg = self.create_cfg()
+
+	extra_files = []
+	for root, dirnames, filenames in os.walk(cfg.SITE_DIR):
+            for filename in fnmatch.filter(filenames, '*.py'):
+		extra_files.append(os.path.join(root, filename))
+
         try:
-            wait_for_code_change()
+            wait_for_code_change(extra_files=extra_files)
             p1.terminate()
             p1.join()
             flush_fds()
@@ -42,7 +48,7 @@ class AppCli(Cli):
                 sys.exit()
 
         except KeyboardInterrupt:
-            print('Terminating HTTP and WS servers...')
+            print('Terminating HTTP server...')
             p1.terminate()
 
         sys.exit()
