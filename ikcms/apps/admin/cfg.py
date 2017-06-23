@@ -24,7 +24,7 @@ class Cfg(ikcms.apps.composite.Cfg):
     }
 
     STATIC_DIR = pkg_resources.resource_filename('admin', 'static')
-    STATIC_URL = 'admin/static'
+    STATIC_URL = '/admin/static/'
     CMS_STATIC_DIR = pkg_resources.resource_filename('iktomi.cms', 'static')
     CMS_STATIC_URL = '/cms-static/'
 
