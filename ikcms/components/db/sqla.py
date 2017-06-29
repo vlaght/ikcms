@@ -1,4 +1,5 @@
 import logging
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.query import Query
@@ -6,14 +7,14 @@ from sqlalchemy.orm.query import Query
 import ikcms.components.db.base
 
 
-class SQLAComponent(ikcms.components.db.base.DBComponent):
+class Component(ikcms.components.db.base.DBComponent):
 
     session_maker_class = sessionmaker
     query_class = Query
     generator = None
 
     def __init__(self, app, engines, models):
-        super(SQLAComponent, self).__init__(app)
+        super(Component, self).__init__(app)
         self.engines = engines
         self.models = models
         self.binds = self.get_binds()
@@ -99,6 +100,6 @@ class SQLAComponent(ikcms.components.db.base.DBComponent):
         else:
             raise NotImplementedError
 
-component = SQLAComponent.create_cls
+component = Component.create_cls
 
 
