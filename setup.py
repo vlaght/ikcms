@@ -24,7 +24,6 @@ setup(
     version='0.1',
     packages=find_packages(),
     package_dir={'ikcms': 'ikcms'},
-    scripts=['bin/ikinit'],
     test_suite='nose.collector',
     tests_require=['nose'],
     install_requires=[
@@ -57,5 +56,10 @@ setup(
     cmdclass=cmdclass,
     message_extractors={
         'ikcms': [('**.py', 'python', None)],
+    },
+    entry_points = {
+        'console_scripts': [
+            'ikinit = ikcms.ikinit:cli',
+        ],
     },
 )

@@ -1,5 +1,6 @@
 # coding: utf8 
 import os
+import sys
 import pkg_resources
 import argparse
 
@@ -121,7 +122,7 @@ class InitCommand(Command):
 
     def __call__(self, **kwargs):
         if os.path.exists(AppsCfg.DEFAULT_FILEPATH):
-            print('Error: {} exists', AppsCfg.DEFAULT_FILEPATH)
+            print('Error: {} exists'.format(AppsCfg.DEFAULT_FILEPATH))
             sys.exit()
         AppsCfg().store()
         print('{} created'.format(AppsCfg.DEFAULT_FILEPATH))
