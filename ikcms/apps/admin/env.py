@@ -62,18 +62,20 @@ class Environment(ikcms.apps.composite.env.Environment):
     def user(storage):
         return storage.user
 
-    @storage_cached_property
-    def models(storage):
-        import models
-        return models
+    @cached_property
+    def models(self):
+        class Models(object):
+            admin = self.app.db.get_models('admin')
+            front = self.app.db.get_models('front')
+        return Models()
 
     @storage_cached_property
     def redis(storage):
         return storage.app.cache.client
 
-    @storage_cached_property
-    def auth_model(storage):
-        return storage.models.AdminUser
+    @cached_property
+    def auth_model(self):
+        return self.models.admin.AdminUser
 
     @storage_cached_property
     def item_lock(storage):
@@ -104,3 +106,23 @@ class Environment(ikcms.apps.composite.env.Environment):
         for key in import_settings:
             d[key] = getattr(self.cfg, key)
         return d
+
+    @storage_cached_property
+    def _lang(storage):
+        lang = getattr(storage, 'lang', 'ru')
+        return storage.app.i18n.langs[lang]
+
+    @storage_cached_property
+    def gettext(storage):
+        return storage._lang.gettext
+
+    @storage_cached_property
+    def ngettext(storage):
+        return storage._lang.ngettext
+
+    # XXX: Copypasted from iktomi-cms Environment
+    # override this method with configured HelpLoader.get_help to be able
+    # to use help messages in admin
+    def get_help(self, *args, **kwargs):
+        return ''
+
