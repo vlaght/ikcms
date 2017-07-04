@@ -3,6 +3,7 @@ import os
 import sys
 import pkg_resources
 import argparse
+import shutil
 
 import jinja2
 import yaml
@@ -218,6 +219,13 @@ class AdminCommand(Command):
             name,
             dict(name=name),
         )
+        src_cms_static_dir = pkg_resources.resource_filename(
+            'iktomi.cms',
+            'static',
+        )
+        dest_cms_static_dir = os.path.join(name, 'static/cms')
+        shutil.copytree(src_cms_static_dir, dest_cms_static_dir)
+        print('{} dir created'.format(dest_cms_static_dir))
         apps_cfg = AppsCfg.load()
         if name not in apps_cfg['apps']:
             apps_cfg['apps'].append(name)
