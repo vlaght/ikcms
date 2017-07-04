@@ -3,8 +3,11 @@ class Component(object):
     name = None
 
     def __init__(self, app):
-        assert self.name
-        assert not hasattr(app, self.name)
+        assert self.name, \
+            'Component {} has not name property'.format(self)
+        assert not hasattr(app, self.name), \
+            'Component with name "{}" already exists'.format(self.name)
+
         self.app = app
         setattr(app, self.name, self)
 

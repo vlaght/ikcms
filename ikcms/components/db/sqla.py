@@ -89,9 +89,9 @@ class Component(ikcms.components.db.base.DBComponent):
 
     def get_model(self, path):
         paths = path.split('.')
-        models = self.models[paths[0]]
+        model = self.models[paths[0]]
         for p in paths[1:]:
-            model = getattr(models, p)
+            model = getattr(model, p)
         return model
 
     def generate(self, names=None):
