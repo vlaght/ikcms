@@ -1,9 +1,15 @@
 import iktomi.web
-from iktomi.web import WebHandler
 from iktomi.web import request_filter
 
 from .. import exceptions
-from .guard import h_guard
+
+from .base import h_match
+from .base import h_prefix
+from .base import h_namespace
+from .base import h_cases
+
+from .domains import h_domain
+from .domains import h_subdomain
 
 __all__ = (
     'WebHandler',
@@ -12,10 +18,15 @@ __all__ = (
     'h_server_error',
     'h_match',
     'h_prefix',
+    'h_namespace',
     'h_cases',
     'h_static_files',
+    'h_domain',
+    'h_subdomain',
+    'h_app',
 )
 
+WebHandler = iktomi.web.WebHandler
 
 @request_filter
 def h_not_found(env, data, next_handler=None):
@@ -24,14 +35,6 @@ def h_not_found(env, data, next_handler=None):
 @request_filter
 def h_server_error(env, data, next_handler=None):
     return env.app.HTTPInternalServerError
-
-h_prefix = iktomi.web.prefix
-h_cases = iktomi.web.cases
-
-def h_match(path, name=None, convs=None, methods=('GET',), params=()):
-    match = iktomi.web.match(path, name=name, convs=convs)
-    guard = h_guard(methods, params)
-    return  match | guard
 
 
 class HStaticFiles(iktomi.web.static_files):
@@ -49,3 +52,18 @@ class HStaticFiles(iktomi.web.static_files):
 
 
 h_static_files = HStaticFiles
+
+
+class HApp(iktomi.web.WebHandler):
+
+    def __init__(self, app):
+        self.app = app
+
+    def app(self, env, data):
+        return self.app.handler(env, data)
+    __call__ = app
+
+    def _locations(self):
+        return self.app.handler._locations()
+
+h_app = HApp

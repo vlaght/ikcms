@@ -8,6 +8,9 @@ from .handlers import h_match
 from .handlers import h_prefix
 from .handlers import h_cases
 from .handlers import h_static_files
+from .handlers import h_domain
+from .handlers import h_subdomain
+from .handlers import h_app
 from .view import BaseView
 from .view import HView
 from .view import viewhandler
