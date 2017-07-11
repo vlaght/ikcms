@@ -58,3 +58,5 @@ class Cfg(ikcms.apps.composite.Cfg):
         return os.path.join(self.ROOT_DIR, 'media', 'admin')
 
     MEDIA_URL = '/media/'
+    
+    PREVIEW_STATIC_URL = '/preview/static/'

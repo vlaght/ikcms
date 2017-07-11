@@ -50,7 +50,6 @@ class HStaticFiles(iktomi.web.static_files):
             return None
     __call__ = static_files
 
-
 h_static_files = HStaticFiles
 
 
@@ -60,7 +59,11 @@ class HApp(iktomi.web.WebHandler):
         self.app = app
 
     def app(self, env, data):
-        return self.app.handler(env, data)
+        app_request = self.app.get_request(env.request.environ)
+        app_env = self.app.get_env(app_request)
+        app_env._route_state = env._route_state
+        app_data = self.app.get_data()
+        return self.app.handle(app_env, app_data)
     __call__ = app
 
     def _locations(self):

@@ -62,20 +62,20 @@ class Environment(ikcms.apps.composite.env.Environment):
     def user(storage):
         return storage.user
 
-    @cached_property
-    def models(self):
+    @storage_cached_property
+    def models(storage):
         class Models(object):
-            admin = self.app.db.get_models('admin')
-            front = self.app.db.get_models('front')
+            admin = storage.app.db.get_models('admin')
+            front = storage.app.db.get_models('front')
         return Models()
 
     @storage_cached_property
     def redis(storage):
         return storage.app.cache.client
 
-    @cached_property
-    def auth_model(self):
-        return self.models.admin.AdminUser
+    @storage_cached_property
+    def auth_model(storage):
+        return storage.models.AdminUser
 
     @storage_cached_property
     def item_lock(storage):
