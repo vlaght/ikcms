@@ -14,7 +14,8 @@ class AppCli(Cli):
 
     def command_serve(self, host=None, port=None):
 
-        def http_process(host, port):
+        def http_process(host, port, stdin):
+            sys.stdin = stdin
             from wsgiref.simple_server import make_server
             app = self.create_app()
             host = host or app.cfg.HTTP_SERVER_HOST
@@ -23,15 +24,16 @@ class AppCli(Cli):
             server = make_server(host, port, app)
             server.serve_forever()
 
-        p1 = Process(target=http_process, args=(host, port))
+        stdin = os.fdopen(os.dup(sys.stdin.fileno()))
+        p1 = Process(target=http_process, args=(host, port, stdin))
         p1.start()
 
         cfg = self.create_cfg()
 
-	extra_files = []
-	for root, dirnames, filenames in os.walk(cfg.SITE_DIR):
+        extra_files = []
+        for root, dirnames, filenames in os.walk(cfg.SITE_DIR):
             for filename in fnmatch.filter(filenames, '*.py'):
-		extra_files.append(os.path.join(root, filename))
+                extra_files.append(os.path.join(root, filename))
 
         try:
             wait_for_code_change(extra_files=extra_files)
