@@ -31,7 +31,7 @@ class AppCli(Cli):
         cfg = self.create_cfg()
 
         extra_files = []
-        for root, dirnames, filenames in os.walk(cfg.SITE_DIR):
+        for root, dirnames, filenames in os.walk(cfg.ROOT_DIR):
             for filename in fnmatch.filter(filenames, '*.py'):
                 extra_files.append(os.path.join(root, filename))
 
