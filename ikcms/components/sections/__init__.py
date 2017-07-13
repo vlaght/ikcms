@@ -1,20 +1,25 @@
+import logging
 import cPickle as pickle
 import time
 
 from sqlalchemy.orm import Query
 from sqlalchemy import func
+from sqlalchemy import sql
+import sqlalchemy.exc
 
 import ikcms.components.base
 from ikcms.web import h_cases
+from ikcms.utils import cached_property
 
 from . import views
+
+logger = logging.getLogger(__name__)
 
 
 class Component(ikcms.components.base.Component):
 
     name = 'sections'
     model = 'front.Section'
-    query_cls = Query
     check_timeout = 3
     lock_timeout = 3
     handler_updated_ts = None
@@ -80,7 +85,11 @@ class Component(ikcms.components.base.Component):
             return cache_updated_ts
 
         now_ts = int(time.time())
-        db_updated_ts = self.get_updated_ts_from_db()
+        try:
+            db_updated_ts = self.get_updated_ts_from_db()
+        except sqlalchemy.exc.ProgrammingError as exc:
+            logger.warning('Retrieve sections error: {}'.format(exc))
+            return None
 
         # if db not changed, we update cache checked ts
         if cache_updated_ts and db_updated_ts <= cache_updated_ts:
@@ -113,21 +122,22 @@ class Component(ikcms.components.base.Component):
 
     def get_updated_ts_from_db(self):
         session = self.app.db()
-        row = self.query_cls(func.max(self.model.updated_dt), session).first()
+        s = sql.select([func.max(self.model.updated_dt)])
+        result = list(session.execute(s))
         session.close()
-        if row:
-            return int(time.mktime(row[0].timetuple()))
+        if result and result[0][0]:
+            return int(time.mktime(result[0][0].timetuple()))
         else:
             return None
 
     def get_sections_from_db(self):
         session = self.app.db()
-        sections_objs = self.query_cls(self.model, session).\
-            order_by(self.model.order).all()
+        sections_objs = session.query(self.model).\
+            order_by(self.model.order.asc()).all()
 
         objs_by_id = {obj.id: obj for obj in sections_objs}
-        sections = [section.to_meta_dict() \
-            for section in sections_objs if section.public]
+        sections = [section.to_meta_dict() for section in sections_objs \
+            if section.slug]
         sections_by_id = {section['id']: section for section in sections}
         sections_by_parent = {}
         for section in sections:
