@@ -57,6 +57,12 @@ class Cfg(ikcms.apps.composite.Cfg):
     def MEDIA_ROOT_ADMIN(self):
         return os.path.join(self.ROOT_DIR, 'media', 'admin')
 
+    @cached_property
+    def MEDIA_ROOT_FRONT(self):
+        return os.path.join(self.ROOT_DIR, 'media', 'front')
+
     MEDIA_URL = '/media/'
     
     PREVIEW_STATIC_URL = '/preview/static/'
+
+    REDIS_DB = 1

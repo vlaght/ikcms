@@ -10,7 +10,10 @@ def sessionmaker(component, *args, **kwargs):
     return filesessionmaker(
         sqlalchemy.orm.sessionmaker(*args, **kwargs),
         file_manager=app.admin_file_manager,
-        file_managers={}
+        file_managers={
+            component.models['admin'].metadata: app.admin_file_manager,
+            component.models['front'].metadata: app.front_file_manager,
+        }
     )
 
 Component = ikcms.components.db.sqla.component(

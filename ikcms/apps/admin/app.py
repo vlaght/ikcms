@@ -1,5 +1,5 @@
 from iktomi.utils import cached_property
-from iktomi.unstable.db.files import FileManager
+from iktomi.db.files import FileManager
 from iktomi.cms.packer import StaticPacker
 
 import ikcms.apps.composite
@@ -51,6 +51,15 @@ class App(ikcms.apps.composite.App):
             self.cfg.MEDIA_ROOT_ADMIN,
             self.cfg.FORM_TEMP_URL,
             self.cfg.MEDIA_URL,
+        )
+
+    @cached_property
+    def front_file_manager(self):
+        return FileManager(
+            transient_root=None,
+            persistent_root=self.cfg.MEDIA_ROOT_FRONT,
+            transient_url=None,
+            persistent_url=self.cfg.MEDIA_URL,
         )
 
     def get_streams(self):
