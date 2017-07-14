@@ -28,12 +28,12 @@ class Paginator(object):
         @cached_property
         def next_page(self):
             if self.has_next:
-                return self.paginator.page(self.page + 1)
+                return self.paginator.page(self.number + 1)
 
         @cached_property
         def prev_page(self):
             if self.has_prev:
-                return self.paginator.page(self.page - 1)
+                return self.paginator.page(self.number - 1)
 
 
 
