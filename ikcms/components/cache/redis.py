@@ -38,16 +38,17 @@ class Lock(object):
                     pipe.delete(self.key)
                     pipe.execute()
                 else:
-                    raise self.component.LockLosted
+                    raise self.component.LockLosted(self.key)
             except self.component.WatchError:
-                raise self.component.LockLosted
+                raise self.component.LockLosted(self.key)
 
 
 class Component(base.Component):
 
     DEFAULT_REDIS_HOST = 'localhost'
     DEFAULT_REDIS_PORT = 6379
-    prefix = ''
+    DEFAULT_REDIS_DB = 0
+    PREFIX = ''
     WatchError = redis.WatchError
 
     class LockTimeout(Exception): pass
@@ -56,12 +57,14 @@ class Component(base.Component):
     def __init__(self, app, client):
         super(Component, self).__init__(app)
         self.client = client
+        self.prefix = getattr(app.cfg, 'REDIS_PREFIX', self.PREFIX)
 
     @classmethod
     def create(cls, app):
         host = getattr(app.cfg, 'REDIS_HOST', cls.DEFAULT_REDIS_HOST)
         port = getattr(app.cfg, 'REDIS_PORT', cls.DEFAULT_REDIS_PORT)
-        return cls(app, client=redis.Redis(host=host, port=port))
+        db = getattr(app.cfg, 'REDIS_DB', cls.DEFAULT_REDIS_DB)
+        return cls(app, client=redis.Redis(host=host, port=port, db=db))
 
     def get(self, key):
         return self.client.get(self._key(key))

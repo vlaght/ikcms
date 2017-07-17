@@ -17,7 +17,7 @@ def get_handler(app):
     auth = AdminAuth(admin_models.AdminUser, app.cache.client)
 
     if getattr(app, 'preview', False):
-        h_preview = h_prefix('/preview', name='preview') | h_app(app.preview)
+        h_preview = app.preview.handler()
     else:
         h_preview = None
 
