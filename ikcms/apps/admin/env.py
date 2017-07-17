@@ -58,9 +58,9 @@ class Environment(ikcms.apps.composite.env.Environment):
     def context(self):
         return self.Context(self)
 
-    @storage_cached_property
-    def user(storage):
-        return storage.user
+    #@storage_cached_property
+    #def user(storage):
+    #    return storage.user
 
     @cached_property
     def models(self):
@@ -93,9 +93,11 @@ class Environment(ikcms.apps.composite.env.Environment):
     def ngettext(self):
         return self.lang.ngettext
 
+    @storage_method
     def get_template_vars(self):
         d = dict(
             context=self.app.get_context(self),
+            user=getattr(self, 'user', None),
             quote_js=quote_js,
             url_for=self.url_for,
             url_for_static=self.url_for_static,
