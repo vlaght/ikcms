@@ -7,10 +7,25 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: ikcms 0.1\n"
-"Report-Msgid-Bugs-To: motormen@gmail.com\n"
-"POT-Creation-Date: 2017-05-30 16:10+0300\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2017-07-21 15:42+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.4.0\n"
+
+#: ikcms/apps/admin/preview.py:105
+msgid "Preview"
+msgstr ""
+
+#: ikcms/components/sections/views.py:52
+msgid "Dir"
+msgstr ""
+
+#: ikcms/components/sections/views.py:69
+msgid "Page"
+msgstr ""
 

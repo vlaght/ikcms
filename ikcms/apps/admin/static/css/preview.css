@@ -1,0 +1,100 @@
+.preview-panel {
+    border: solid;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: #ffffff;
+    width: 150px;
+    height: 50px;
+    padding: 10px;
+}
+.preview-panel.closed {
+    width: 10px;
+    height: 20px;
+}
+
+.preview-panel .close-button{
+    position:absolute;
+    top: 10px;
+    right: 10px;
+}
+.preview-panel .preview-width {
+    display: inline-block;
+    margin-top: 10px;
+    white-space: nowrap;
+    height: 25px;
+    overflow: hidden;
+    background: #fff;
+    vertical-align: top;
+    list-style: none;
+}
+.preview-panel .preview-width li {
+    height: 26px;
+    width: 26px;
+    background-size: 26px;
+    line-height: 25px;
+    cursor: pointer;
+    float: left;
+    margin-right: 10px;
+}
+.preview-panel .preview-width li:hover{
+    background-color: #AAAAAA;
+}
+
+.preview-panel .preview-width li.selected{
+    background-color: #AAAAAA;
+}
+
+
+.preview-panel .preview-width li.desktop {
+    background-image: url(/cms-static/images/desktop.svg);
+}
+.preview-panel .preview-width li.laptop {
+    background-image: url(/cms-static/images/laptop.svg);
+}
+.preview-panel .preview-width li.tablet {
+    background-image: url(/cms-static/images/tablet.svg);
+}
+.preview-panel .preview-width li.mobile {
+    background-image: url(/cms-static/images/mobile.svg);
+}
+
+[data-preview-hidden] .preview-buttons{
+    display:none;
+}
+
+[data-preview-hidden]:hover .preview-buttons{
+    display:block;
+}
+[data-preview-edit] .preview-buttons{
+    padding: 5px 0px 5px 0px;
+}
+[data-preview-edit] .preview-buttons a{
+    margin-right: 10px;
+    -webkit-font-smoothing: auto;
+    font: normal 12px Arial, sans-serif;
+
+    border: none;
+    background: #7F8C8D;
+    color: #ffffff;
+    padding: 5px 8px;
+    line-height: 1.3em;
+    text-decoration: none;
+    text-shadow: none;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 3px;
+    min-height: 16px;
+}
+
+[data-preview-position="absolute"] .preview-buttons{
+    position:absolute;
+}
+[data-preview-position="absolute_right"] .preview-buttons{
+    position:absolute;
+    right:5px;
+}
+
+.preview-unpublished {
+    background-color: #FFEEEE !important;
+}

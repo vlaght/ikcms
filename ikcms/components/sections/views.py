@@ -49,6 +49,7 @@ class BaseView(ikcms.web.BaseView):
 class DirView(BaseView):
 
     name = 'dir'
+    title = N_('Dir')
 
     @classmethod
     def cases(cls, component, section):
@@ -65,7 +66,7 @@ class DirView(BaseView):
 class PageView(BaseView):
 
     name = 'page'
-    title = N_('Страница')
+    title = N_('Page')
     templates_folder = 'sections/page'
 
     @classmethod

@@ -213,12 +213,31 @@ class AdminCommand(Command):
             print('Error: {} already exists'.format(name))
             return
         os.mkdir(name)
+
         render(
             'ikcms',
             'ikinit/templates/admin',
             name,
             dict(name=name),
         )
+
+        src_static_js_dir = pkg_resources.resource_filename(
+            'ikcms.apps.admin',
+            'static/js',
+        )
+        dest_static_js_dir = os.path.join(name, 'static', 'js')
+        shutil.copytree(src_static_js_dir, dest_static_js_dir)
+        print('{} dir created'.format(dest_static_js_dir))
+
+        src_static_css_dir = pkg_resources.resource_filename(
+            'ikcms.apps.admin',
+            'static/css',
+        )
+        dest_static_css_dir = os.path.join(name, 'static', 'css')
+        shutil.copytree(src_static_css_dir, dest_static_css_dir)
+        print('{} dir created'.format(dest_static_css_dir))
+
+
         src_cms_static_dir = pkg_resources.resource_filename(
             'iktomi.cms',
             'static',

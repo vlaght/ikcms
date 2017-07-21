@@ -12,6 +12,7 @@ class HApp(ikcms.web.WebHandler):
         app_request = self.app.get_request(env.request.environ)
         app_env = self.app.get_env(app_request)
         app_env._route_state = env._route_state
+        app_env.parent_env = env
         app_data = self.app.get_data()
         return self.app.handler(app_env, app_data)
     __call__ = app

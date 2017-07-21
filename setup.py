@@ -52,6 +52,11 @@ setup(
     package_data={'ikcms': [
         'ikinit/templates/*/*.j2',
         'locale/*/*.po',
+        'apps/admin/static/css/Manifest',
+        'apps/admin/static/css/*.css',
+        'apps/admin/static/js/Manifest',
+        'apps/admin/static/js/*.js',
+        'apps/admin/static/js/lib/*.js',
     ]},
     cmdclass=cmdclass,
     message_extractors={

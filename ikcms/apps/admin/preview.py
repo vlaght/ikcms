@@ -1,4 +1,6 @@
+from iktomi.cms.stream_actions import GetAction
 from ikcms.utils import cached_property
+from ikcms.utils import N_
 from ikcms.web import h_prefix
 
 
@@ -70,4 +72,63 @@ class AppMixin(object):
 
     def get_handler(self):
         return h_prefix('/preview') | super(AppMixin, self).get_handler()
+
+    def preview_buttons(self, env, stream_id, item_id, **kwargs):
+        admin_env = env.parent_env
+        stream = admin_env.streams[stream_id]
+        if not stream.get_permissions(admin_env):
+            return {}
+
+        result = {}
+        result['data-preview-where'] = kwargs.get('where', 'bottom')
+        result['data-preview-position'] = kwargs.get('position', 'relative')
+        result['data-preview-left'] = kwargs.get('left')
+        result['data-preview-right'] = kwargs.get('right')
+        result['data-preview-top'] = kwargs.get('top')
+        result['data-preview-bottom'] = kwargs.get('bottom')
+        if kwargs.get('hidden', False):
+            result['data-preview-hidden'] = 1
+        url_kwargs = {'item': item_id}
+        if 'lang' in kwargs:
+            url_kwargs['lang'] = kwargs['lang']
+        item_url = stream.url_for(admin_env, 'item', **url_kwargs)
+        result['data-preview-edit'] = item_url
+        return result
+
+
+class PreviewStreamAction(GetAction):
+
+    item_lock = True
+    allowed_for_new = False
+    cls = 'preview'
+    action = 'preview'
+    title = N_(u'Preview')
+    mode = 'internal'
+
+    @property
+    def app(self):
+        return self
+
+    def url(self, env, item):
+        preview_app = env.app.preview.app
+        preview_env = preview_app.get_env(env.request)
+        preview_app.i18n.set_lang(preview_env, env.lang)
+        try:
+            return preview_env.url_for_obj(item)
+        finally:
+            preview_env.close()
+
+    def external_url(self, env, data, item):
+        return '#'
+
+    def is_available(self, env, item):
+        return GetAction.is_available(self, env, item) and \
+                getattr(env, 'version', None) != 'front' and \
+                self.url(env, item)
+
+    def preview(self, env, data):
+        return None
+
+    __call__ = preview
+
 
