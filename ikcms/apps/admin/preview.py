@@ -1,3 +1,4 @@
+# coding: utf8
 from iktomi.cms.stream_actions import GetAction
 from ikcms.utils import cached_property
 from ikcms.utils import N_
@@ -102,7 +103,7 @@ class PreviewStreamAction(GetAction):
     allowed_for_new = False
     cls = 'preview'
     action = 'preview'
-    title = N_(u'Preview')
+    title = u'Превью'
     mode = 'internal'
 
     @property
@@ -112,7 +113,8 @@ class PreviewStreamAction(GetAction):
     def url(self, env, item):
         preview_app = env.app.preview.app
         preview_env = preview_app.get_env(env.request)
-        preview_app.i18n.set_lang(preview_env, env.lang)
+        if hasattr(env, 'lang'):
+            preview_app.i18n.set_lang(preview_env, env.lang)
         try:
             return preview_env.url_for_obj(item)
         finally:
