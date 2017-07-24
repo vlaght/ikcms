@@ -204,7 +204,10 @@ class Component(ikcms.components.base.Component):
 
     def h_subsections(self, section):
         handlers = []
-        subsections = self.get_sections(section['children'])
+        if section is None:
+            subsections = []
+        else:
+            subsections = self.get_sections(section['children'])
         for subsection in subsections:
             if not subsection:
                 continue
