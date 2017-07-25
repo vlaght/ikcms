@@ -24,6 +24,7 @@ class Component(ikcms.components.base.Component):
     App = None
     Cfg = None
     HApp = HApp
+    local_cfg = False
 
     def __init__(self, app):
         assert self.App, 'App property required'
@@ -32,7 +33,10 @@ class Component(ikcms.components.base.Component):
         self.app = self.create_app(self.App, self.Cfg)
 
     def create_app(self, App, Cfg):
-        return App(Cfg(parent_app=self.app))
+        cfg = Cfg(parent_app=self.app)
+        if self.local_cfg:
+            cfg.update_from_py()
+        return App(cfg)
 
     @property
     def root(self):
