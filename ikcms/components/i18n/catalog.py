@@ -52,6 +52,7 @@ class POCatalog(object):
             pot_file=None,
             method_map=[],
             options_map={},
+            root_dir=None
         ):
         assert not (bool(input_dirs) ^ bool(pot_file))
         self.name = name
@@ -60,6 +61,7 @@ class POCatalog(object):
         self.pot_file = pot_file
         self.method_map = method_map
         self.options_map = options_map
+        self.root_dir = root_dir
 
     def extract(self):
         if not self.input_dirs:
@@ -74,6 +76,8 @@ class POCatalog(object):
             )
             for filename, lineno, message, comments, context in extracted:
                 fpath = dirpath.join(filename)
+                if self.root_dir:
+                    fpath = os.path.relpath(fpath, self.root_dir)
                 logger.info('Extracting messages from %s', fpath)
                 catalog.add(
                     message,
