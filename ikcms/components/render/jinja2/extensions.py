@@ -119,14 +119,17 @@ class I18n(jinja2.ext.i18n):
 
 class MacrosModuleWrapper(object):
 
-    def __init__(self, module):
-        self.__module = module
+    def __init__(self, environment, name):
+        self.__environment = environment
+        self.__name = name
 
     def __getattr__(self, name):
-        return getattr(self.__module, name)
+        template = self.__environment.get_template(self.__name)
+        module = template.make_module(vars=self.__environment.globals)
+        return getattr(module, name)
 
     def __call__(self, *args, **kwargs):
-        return self.__module.main(*args, **kwargs)
+        return self.main(*args, **kwargs)
 
 
 class MacrosLib(object):
@@ -136,9 +139,10 @@ class MacrosLib(object):
 
     def __getattr__(self, name):
         try:
-            tmpl = self.environment.get_template('macros/%s.html' % name)
-            module = tmpl.make_module(vars=self.environment.globals)
-            result = MacrosModuleWrapper(module)
+            result = MacrosModuleWrapper(
+                self.environment,
+                'macros/{}.html'.format(name)
+            )
             setattr(self, name, result)
             return result
         except Exception as e:
