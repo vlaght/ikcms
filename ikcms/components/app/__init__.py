@@ -33,7 +33,7 @@ class Component(ikcms.components.base.Component):
         self.app = self.create_app(self.App, self.Cfg)
 
     def create_app(self, App, Cfg):
-        cfg = Cfg(parent_app=self.app)
+        cfg = Cfg(parent_app=self.app, ROOT_DIR=self.app.cfg.ROOT_DIR)
         if self.local_cfg:
             cfg.update_from_py()
         return App(cfg)
