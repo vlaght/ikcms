@@ -101,14 +101,14 @@ class SphinxQuery(Query):
 
         data_clause = u'({})'.format(u', '.join(data_clause_list))
 
-        sql = u'CALL SNIPPETS({data}, {index}, {term}, {options})'.format(
+        raw_sql = u'CALL SNIPPETS({data}, {index}, {term}, {options})'.format(
             data=data_clause,
             index=unicode(bindparams[0]),
             term=unicode(bindparams[1]),
             options=options_clause,
         )
 
-        return engine.execute(sql.text(sql, bindparams=bindparams))
+        return engine.execute(sql.text(raw_sql, bindparams=bindparams))
 
     def _simple_statement(self, context):
         statement = super(SphinxQuery, self)._simple_statement(context)
