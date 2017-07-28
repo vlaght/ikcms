@@ -13,6 +13,7 @@ registry.register('sphinxql', 'ikcms.components.sphinx.dialect', 'Dialect')
 class Component(ikcms.components.db.sqla.Component):
     name = 'sphinx'
     query_class = SphinxQuery
+    xmlpipes = {}
 
     DEFAULT_SPHINX_URI = 'sphinxql://127.0.0.1:9306/?charset=utf8'
     DEFAULT_SPHINX_PARAMS = {
