@@ -1,5 +1,5 @@
 from sqlalchemy import exc
-from sqlalchemy.dialects.mysql.mysqldb import dialect
+from sqlalchemy.dialects.mysql.pymysql import dialect
 from sqlalchemy.sql import compiler
 from sqlalchemy.sql import expression
 from sqlalchemy.sql import elements
