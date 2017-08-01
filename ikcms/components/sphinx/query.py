@@ -65,6 +65,13 @@ class SphinxQuery(Query):
             self._criterion = self._adapt_clause(criterion, True, True)
 
     def snippets(self, data, term, **options):
+        options.setdefault('query_mode', 1)
+        options.setdefault('limit_passages', 1)
+        options.setdefault('weight_order', 1)
+        options.setdefault('limit', 500)
+        options.setdefault('around', 10)
+        options.setdefault('before_match', u'<span class="highlight">')
+        options.setdefault('after_match', u'</span>')
         model = self._primary_entity.type
         engine = self.session.get_bind(model)
 
@@ -115,6 +122,12 @@ class SphinxQuery(Query):
         statement._options = self._options
         return statement
 
+    def proxy(self, session, cls, cls_identity='id'):
+        items = list(self)
+        identities = [getattr(item, cls_identity) for item in items]
+        weights = {getattr(item, cls_identity): item.weight for item in items}
+        return BulkIdProxy(session, identities,cls, cls_identity, weights)
+
 
 class BulkIdProxy(object):
 
@@ -146,6 +159,5 @@ class BulkIdProxy(object):
             .order_by(func.field(self._key, *keys)) \
             .all()
         for item in items:
-            item.__weight__ = self._weights.get(item.id)[0]
-            item.__original_weight__ = self._weights.get(item.id)[1]
+            item.__weight__ = self._weights.get(item.id, None)
         return items
