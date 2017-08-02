@@ -136,6 +136,7 @@ class BulkIdProxy(object):
         self._cls = cls
         self._weights = weights or {}
         self._identities = identities
+        self._options = []
         if isinstance(key, basestring):
             manager = manager_of_class(cls)
             self._key = manager[key]
@@ -147,6 +148,10 @@ class BulkIdProxy(object):
         else:
             self._key = key
 
+    def options(self, *args):
+        self._options.extend(args)
+        return self
+
     def count(self):
         return len(self._identities)
 
@@ -154,10 +159,12 @@ class BulkIdProxy(object):
         keys = self._identities[item]
         if not keys:
             return []
-        items = self._session.query(self._cls)\
+        query = self._session.query(self._cls)\
             .filter(self._key.in_(keys)) \
-            .order_by(func.field(self._key, *keys)) \
-            .all()
+            .order_by(func.field(self._key, *keys))
+        if self._options:
+            query = query.options(*self._options)
+        items = list(query)
         for item in items:
             item.__weight__ = self._weights.get(item.id, None)
         return items
