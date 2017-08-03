@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from StringIO import StringIO
-from models.common.fields import ExpandableMarkup
 from datetime import datetime, timedelta
 from random import randint, choice, sample, randrange, random
 
 from iktomi.unstable.db.sqla.factories import return_locals
+from ikcms.components.markup.model import ExpandableMarkup
+
 from .vesna import phrase, randname
 
 
