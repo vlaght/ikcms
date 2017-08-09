@@ -29,6 +29,9 @@ class h_guard(WebHandler):
             return True
 
         checked_args = set()
+        # Unwrap CacheableRequest
+        if hasattr(request, 'unwrap'):
+            request = request.unwrap()
         for key, value in request.GET.items():
             if key.startswith('utm_') or key.startswith('hc_'):
                 continue
