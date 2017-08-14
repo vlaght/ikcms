@@ -13,11 +13,12 @@ class BoundTemplate(BaseBoundTemplate):
         return self.component(template_name, **self.get_template_vars(context))
     __call__ = render
 
-    def to_response(self, template_name, context=None):
+    def to_response(self, template_name, context=None, content_type=None):
         context = context or {}
         return self.component.to_response(
             template_name,
             self.get_template_vars(context),
+            content_type=content_type
         )
 
     def get_template_vars(self, context):
