@@ -1,3 +1,4 @@
+from json import dumps
 from webob import Response
 from iktomi.templates import BoundTemplate as BaseBoundTemplate
 from ikcms.components.base import Component
@@ -13,6 +14,7 @@ class BoundTemplate(BaseBoundTemplate):
         return self.component(template_name, **self.get_template_vars(context))
     __call__ = render
 
+
     def to_response(self, template_name, context=None, content_type=None):
         context = context or {}
         return self.component.to_response(
@@ -20,6 +22,9 @@ class BoundTemplate(BaseBoundTemplate):
             self.get_template_vars(context),
             content_type=content_type
         )
+
+    def to_json(self, *args, **kwargs):
+        return self.component.to_json(*args, **kwargs)
 
     def get_template_vars(self, context):
         storage = self.env._root_storage
@@ -47,4 +52,5 @@ class RenderComponent(Component):
         result = self.render(name, **context)
         return Response(result, content_type=content_type)
 
-
+    def to_json(self, context, content_type='application/json'):
+        return Response(dumps(context), content_type=content_type)
