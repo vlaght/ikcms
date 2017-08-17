@@ -1,4 +1,6 @@
 import logging
+from hashlib import md5
+from cStringIO import StringIO
 from .. import Request
 from .. import Response
 from .. import WebHandler
@@ -47,49 +49,56 @@ class CacheableRequest(object):
 
 
 class HCache(WebHandler):
-    def __init__(self, expires=None):
+    CFG_ENABLED = 'CACHE_RESPONSE_ENABLED'
+    CFG_EXPIRES = 'CACHE_RESPONSE_EXPIRES'
+    CFG_BACKEND = 'CACHE_RESPONSE_BACKEND'
+
+    def __init__(self, cfg):
         super(HCache, self).__init__()
-        self.backend = NginxBackend()
-        self.expires = expires
+        self.enabled = getattr(cfg, self.CFG_ENABLED, False)
+        self.expires = getattr(cfg, self.CFG_EXPIRES, 0)
+        self.backend = BACKENDS[getattr(cfg, self.CFG_BACKEND, 'redis')]()
         self.nocache = request_filter(
             lambda env, data, next_handler:
                 self.backend.nocache(env, data, next_handler)
         )
 
+    def should_cache_response(self, env):
+        if not self.enabled:
+            return False
+        if not env.request.method in ['GET', 'HEAD']:
+            return False
+        return True
+
     def try_cache(self, env, data):
-        if env.app.cfg.CACHE_PAGES_ENABLED and env.request.method in ['GET', 'HEAD']:
+        if self.should_cache_response(env):
             env.request = CacheableRequest(env.request)
             try:
-                expires = self.expires or env.app.cfg.CACHE_PAGES_EXPIRES
                 response = self.backend.try_cache(
-                    env,
-                    data,
-                    self.next_handler,
-                    expires,
+                    env, data, self.next_handler, self.expires,
                 )
             finally:
                 env.request = env.request.unwrap()
             return response
         return self.next_handler(env, data)
+
     __call__ = try_cache
 
 
 class NginxBackend(object):
-    CACHE_EXPIRES_HEADER = 'X-Accel-Expires'
-
-    def should_add_header(self, response):
+    def should_cache_response(self, response):
         if not isinstance(response, Response):
             return False
         if not response.status_code // 100 == 2:
             return False
-        if self.CACHE_EXPIRES_HEADER in response.headers:
+        if 'X-Accel-Expires' in response.headers:
             return False
         return True
 
     def try_cache(self, env, data, next_handler, expires):
         response = next_handler(env, data)
-        if self.should_add_header(response):
-            response.headers[self.CACHE_EXPIRES_HEADER] = str(expires)
+        if self.should_cache_response(response):
+            response.headers['X-Accel-Expires'] = str(expires)
         return response
 
     def nocache(self, env, data, next_handler):
@@ -97,5 +106,48 @@ class NginxBackend(object):
             env.request = env.request.unwrap()
         response = next_handler(env, data)
         if isinstance(response, Response):
-            response.headers[self.CACHE_EXPIRES_HEADER] = '0'
+            response.headers['X-Accel-Expires'] = '0'
         return response
+
+
+class RedisBackend(object):
+    NOCACHE_ATTR = 'CACHE_RESPONSE_NOCACHE_ATTR'
+
+    def should_cache_response(self, response):
+        if not isinstance(response, Response):
+            return False
+        if not response.status_code // 100 == 2:
+            return False
+        if hasattr(response, self.NOCACHE_ATTR):
+            return False
+        return True
+
+    def try_cache(self, env, data, next_handler, expires):
+        key = 'CACHE_RESPONSE_' + md5(env.request.url).hexdigest()
+        response = env.app.cache.get(key)
+        if response is None:
+            response = next_handler(env, data)
+            if self.should_cache_response(response):
+                env.app.cache.set(key, str(response), expires=expires)
+                logger.info('Put response to cache for {} sec'.format(expires))
+            else:
+                logger.info('Skip response cache')
+        else:
+            response = Response.from_file(StringIO(response))
+            logger.info('Get response from cache')
+        return response
+
+
+    def nocache(self, env, data, next_handler):
+        if isinstance(env.request, CacheableRequest):
+            env.request = env.request.unwrap()
+        response = next_handler(env, data)
+        if isinstance(response, Response):
+            setattr(response, self.NOCACHE_ATTR, self.NOCACHE_ATTR)
+        return response
+
+
+BACKENDS = {
+    'redis': RedisBackend,
+    'nginx': NginxBackend,
+}
