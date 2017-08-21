@@ -13,6 +13,7 @@ class Paginator(object):
 
         def __init__(self, paginator, number, items):
             self.paginator = paginator
+            self.count = self.paginator.count
             self.number = number
             self.items = items
             self.first = bool(number == 1)
