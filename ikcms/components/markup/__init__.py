@@ -43,8 +43,8 @@ class Component(ikcms.components.base.Component):
     def expand(self, value, **kwargs):
         if isinstance(value, ExpandableMarkup):
             str_value = value.markup
-            str_value = self.apply_replacements(str_value)
             str_value = self.apply_filters(str_value, **kwargs)
+            str_value = self.apply_replacements(str_value)
             return Markup(str_value)
         return value
 
