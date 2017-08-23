@@ -22,17 +22,24 @@ logger = logging.getLogger(__name__)
 
 class Lang(str):
 
-    def __new__(cls, component, name):
+    def __new__(cls, component, name, env=None):
         self = str.__new__(cls, name)
         self.component = component
         self.translations = component.translations[name]
         self.format = Format(name)
         self.locale = Locale(name)
+        self._env = env
         return self
+
+    def create_binded(self, env):
+        return self.__class__(self.component, self, env)
 
     @cached_property
     def root(self):
-        return getattr(self.component.app.root, self)
+        if self._env:
+            return getattr(self._env.root, self)
+        else:
+            return getattr(self.component.app.root, self)
 
     @cached_property
     def models(self):
@@ -173,7 +180,9 @@ class Component(base.Component):
 
     def set_lang(self, env, lang):
         assert lang in self.langs
-        setattr(env, 'lang', self.langs[lang])
+        env.langs = {lang: lang.create_binded(env) \
+            for lang in self.langs.values()}
+        env.lang = env.langs[lang]
 
     def h_lang(self, lang):
         return handlers.HLang(self, lang)
