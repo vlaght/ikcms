@@ -73,8 +73,8 @@ class HView(WebHandler):
         view = self.view_cls(env, data, **self.kwargs)
         views = getattr(env, 'views', {})
         view_by_cls = getattr(env, 'view_by_cls', {})
-        assert view.name not in views, view.name
-        assert view.__class__ not in view_by_cls
+        #assert view.name not in views, view.name
+        #assert view.__class__ not in view_by_cls
         views = OrderedDict(views)
         view_by_cls = OrderedDict(view_by_cls)
         views[view.name] = view

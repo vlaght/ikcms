@@ -54,7 +54,7 @@ class DirView(BaseView):
     @classmethod
     def cases(cls, component, section):
         return [
-            h_match('/', name='index') | h_not_found,
+            h_match('/', name='') | h_not_found,
             component.h_subsections(section),
         ]
 
@@ -72,7 +72,7 @@ class PageView(BaseView):
     @classmethod
     def cases(cls, component, section):
         return [
-            h_match('/', name='index') | cls.h_index,
+            h_match('/', name='') | cls.h_index,
             component.h_subsections(section),
         ]
 

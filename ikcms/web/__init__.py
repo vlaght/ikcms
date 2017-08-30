@@ -11,6 +11,7 @@ from .handlers import h_static_files
 from .handlers import h_domain
 from .handlers import h_subdomain
 from .handlers import h_app
+from .handlers import h_namespace
 from .view import BaseView
 from .view import HView
 from .view import viewhandler

@@ -26,6 +26,7 @@ class Component(ikcms.components.base.Component):
     views = {
         'dir': views.DirView,
         'page': views.PageView,
+        'view': views.PageView,
     }
 
     def __init__(self, app):
@@ -153,10 +154,12 @@ class Component(ikcms.components.base.Component):
             result = []
             if parent_section is None:
                 parent_id = None
+                parent_path = []
                 parents = []
             else:
                 parent_id = parent_section['id']
                 parents = parent_section['parents'] + [parent_section['id']]
+                parent_path = parent_section['path']
             for section in sections_by_parent.get(parent_id, []):
                 used_slugs = set()
                 if section['slug'] in used_slugs:
@@ -165,6 +168,7 @@ class Component(ikcms.components.base.Component):
                     used_slugs.add(section['slug'])
                 section = section.copy()
                 section['parents'] = list(parents)
+                section['path'] = parent_path + [section['slug']]
                 children = sections_by_parent.get(section['id'], [])
                 section['children'] = [c['id'] for c in children]
                 result.append(section)
@@ -179,6 +183,9 @@ class Component(ikcms.components.base.Component):
         sections_meta[''] = {'children': root_sections_ids}
         session.close()
         return sections_meta, sections_body
+
+    def set_section_meta(section, section_obj):
+        return section
 
     def get_sections(self, ids):
         return self._get_sections_meta(ids)
@@ -201,6 +208,20 @@ class Component(ikcms.components.base.Component):
 
     def get_section_with_body(self, id):
         return self.get_sections_with_body([id])[0]
+
+    def get_subsection_by_slugs(self, slugs, section=None):
+        # cache?
+        section = section or self.get_section('')
+        for slug in slugs:
+            subsections = self.get_sections(section['children'])
+            for subsection in subsections:
+                if subsection['slug'] == slug:
+                    section = subsection
+                    break
+            else:
+                return None
+        return section
+
 
     def h_subsections(self, section):
         handlers = []
