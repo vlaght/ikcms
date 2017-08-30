@@ -193,7 +193,7 @@ class Component(ikcms.components.base.Component):
     def get_section(self, id):
         return self.get_sections([id])[0]
 
-    def get_sections_with_body(self, ids):
+    def get_sections_with_body(self, db, ids):
         with self.app.cache.pipe() as pipe:
             metas = self._get_sections_meta(ids)
             bodies = self._get_sections_bodies(ids)
@@ -206,8 +206,8 @@ class Component(ikcms.components.base.Component):
             sections.append(section)
         return sections
 
-    def get_section_with_body(self, id):
-        return self.get_sections_with_body([id])[0]
+    def get_section_with_body(self, db, id):
+        return self.get_sections_with_body(db, [id])[0]
 
     def get_subsection_by_slugs(self, slugs, section=None):
         # cache?

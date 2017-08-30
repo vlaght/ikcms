@@ -15,7 +15,7 @@ class BaseView(ikcms.web.BaseView):
 
     def __init__(self, env, data, component, section):
         super(BaseView, self).__init__(env, data)
-        self.section = component.get_section_with_body(section['id'])
+        self.section = component.get_section_with_body(env.db, section['id'])
         if not self.section:
             raise env.app.HTTPNotFound
 
