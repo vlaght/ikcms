@@ -30,11 +30,11 @@ WebHandler = iktomi.web.WebHandler
 
 @request_filter
 def h_not_found(env, data, next_handler=None):
-    return env.app.HTTPNotFound
+    return env.app.HTTPNotFound()
 
 @request_filter
 def h_server_error(env, data, next_handler=None):
-    return env.app.HTTPInternalServerError
+    return env.app.HTTPInternalServerError()
 
 
 class HStaticFiles(iktomi.web.static_files):

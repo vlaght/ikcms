@@ -85,12 +85,6 @@ class App(object):
             response = self.HTTPInternalServerError()
         return response
 
-    def handle_environ(self, environ):
-        request = self.get_request(environ)
-        env = self.get_env(request)
-        data = self.get_data()
-        return self.handle(env, data)
-
     def __call__(self, environ, start_response):
         '''
         WSGI interface method.
@@ -102,8 +96,11 @@ class App(object):
                 'Unusual header "Host: %s", return HTTPNotFound',
                 environ['HTTP_HOST'])
             return self.HTTPNotFound()(environ, start_response)
-        response = self.handle_environ(environ)
         try:
+            request = self.get_request(environ)
+            env = self.get_env(request)
+            data = self.get_data()
+            response = self.handle(env, data)
             result = response(environ, start_response)
         except Exception:
             self.handle_error(env)
