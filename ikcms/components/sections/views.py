@@ -1,6 +1,8 @@
 # coding: utf8
 import os
 
+from jinja2 import TemplateNotFound
+
 from ikcms.utils import N_
 import ikcms.web
 from ikcms.web import h_prefix
@@ -14,10 +16,12 @@ from ikcms.web import viewhandler
 class BaseView(ikcms.web.BaseView):
 
     def __init__(self, env, data, component, section):
-        super(BaseView, self).__init__(env, data)
         self.section = component.get_section_with_body(env.db, section['id'])
         if not self.section:
             raise env.app.HTTPNotFound
+        self.path = os.path.join(*self.section['path'])
+        self.name = self.path
+        super(BaseView, self).__init__(env, data)
 
     @classmethod
     def cases(cls, component, section):
@@ -44,7 +48,22 @@ class BaseView(ikcms.web.BaseView):
         return root.index
 
     def template_name(self, template):
-        return os.path.join(self.templates_folder, template)
+        if template:
+            t = os.path.join(self.path, template)
+        else:
+            t = self.path
+
+        t = self.env.render.component.resolve(t)
+        try:
+            self.env.render.component._env.get_template(t)
+        except TemplateNotFound:
+            if template:
+                return os.path.join(self.templates_folder, template)
+            else:
+                return self.templates_folder
+        else:
+            return t
+
 
 class DirView(BaseView):
 
@@ -78,5 +97,5 @@ class PageView(BaseView):
 
     @viewhandler
     def h_index(self, env, data):
-        return self.render_to_response('index', dict())
+        return self.render_to_response('', dict())
 
