@@ -10,6 +10,7 @@ from . import extensions
 class Jinja2Component(RenderComponent):
 
     filters = {}
+    tests = {}
     globals = {}
     extensions = [
         extensions.CacheTag,
@@ -50,6 +51,7 @@ class Jinja2Component(RenderComponent):
             extensions=self.extensions,
         )
         env.filters.update(self.filters)
+        env.tests.update(self.tests)
         env.globals.update(self.globals)
         return env
 
