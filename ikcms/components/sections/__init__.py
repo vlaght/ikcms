@@ -88,7 +88,7 @@ class Component(ikcms.components.base.Component):
         now_ts = int(time.time())
         try:
             db_updated_ts = self.get_updated_ts_from_db()
-        except sqlalchemy.exc.ProgrammingError as exc:
+        except sqlalchemy.exc.DBAPIError as exc:
             logger.warning('Retrieve sections error: {}'.format(exc))
             return None
 
