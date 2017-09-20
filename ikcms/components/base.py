@@ -15,6 +15,9 @@ class Component(object):
     def create(cls, app):
         return cls(app)
 
+    def on_initialization_end(self):
+        pass
+
     def on_request(self, request):
         pass
 

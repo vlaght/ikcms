@@ -14,6 +14,8 @@ class App(ikcms.apps.base.App):
             component.create(self) for component in self.components]
         self.handler = self.get_handler()
         self.root = self.get_root()
+        for component in self.components:
+            component.on_initialization_end()
 
     def get_request(self, environ):
         request = self.Request(environ, charset='utf-8')

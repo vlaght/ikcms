@@ -44,6 +44,9 @@ class Component(ikcms.components.db.base.DBComponent):
         engine.db_id = db_id
         return engine
 
+    def on_initialization_end(self):
+        self.close()
+
     def on_init_env(self, env):
         setattr(env, self.name, self())
         #env.models = self.env_models
@@ -68,7 +71,7 @@ class Component(ikcms.components.db.base.DBComponent):
 
     def close(self):
         for engine in self.engines.values():
-            engine.terminate()
+            engine.dispose()
 
     def create_all(self):
         for db_id, models in self.models.items():
