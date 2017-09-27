@@ -1,5 +1,6 @@
 import lxml
 import jinja2.ext
+from jinja2 import Markup
 
 from . import tags
 
@@ -54,6 +55,11 @@ class Tag(object):
             jinja_env.add_extension(self.replacement_tag)
             tag = jinja_env.extensions[self.replacement_tag.identifier]
         tag_attrs = dict(xml_tag.attrib, **kwargs)
+        def caller():
+            return Markup((xml_tag.text or '') + ''.join(
+                [lxml.html.tostring(child) for child in xml_tag.iterchildren()],
+            ))
+        tag_attrs['caller'] = caller
         replace_xml_tag_with_text(xml_tag, tag.render(**tag_attrs))
 
 
