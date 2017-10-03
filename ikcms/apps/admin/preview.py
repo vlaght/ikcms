@@ -51,20 +51,8 @@ class CfgMixin(object):
         return self.parent_app.cfg.DEFAULT_CUSTOM_CFG
 
     @cached_property
-    def REDIS_HOST(self):
-        return self.parent_app.cfg.REDIS_HOST
-
-    @cached_property
-    def REDIS_PORT(self):
-        return self.parent_app.cfg.REDIS_PORT
-
-    @cached_property
-    def REDIS_PREFIX(self):
-        return self.parent_app.cfg.REDIS_PREFIX
-
-    @cached_property
-    def REDIS_DB(self):
-        return self.parent_app.cfg.REDIS_DB
+    def REDIS_URL(self):
+        return self.parent_app.cfg.REDIS_URL
 
 
 class AppMixin(object):
@@ -81,6 +69,7 @@ class AppMixin(object):
             return {}
 
         result = {}
+        result['data-preview-title'] = kwargs.get('title', u'Редактировать')
         result['data-preview-where'] = kwargs.get('where', 'bottom')
         result['data-preview-position'] = kwargs.get('position', 'relative')
         result['data-preview-left'] = kwargs.get('left')

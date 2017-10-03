@@ -21,12 +21,12 @@ class Component(ikcms.components.base.Component):
     def __init__(self, app):
         super(Component, self).__init__(app)
         self.model = self.app.db.get_model(self.model)
-        self.cache_key_checked_ts = '{}.checked_ts'.format(self.name)
-        self.cache_key_updated_ts = '{}.updated_ts'.format(self.name)
-        self.cache_key_updating = '{}.updating'.format(self.name)
-        self.cache_key_meta = '{}.meta'.format(self.name)
-        self.cache_key_body = '{}.body'.format(self.name)
-        self.cache_key_lock = '{}.lock'.format(self.name)
+        self.cache_key_checked_ts = '{}:checked_ts'.format(self.name)
+        self.cache_key_updated_ts = '{}:updated_ts'.format(self.name)
+        self.cache_key_updating = '{}:updating'.format(self.name)
+        self.cache_key_meta = '{}:meta'.format(self.name)
+        self.cache_key_body = '{}:body'.format(self.name)
+        self.cache_key_lock = '{}:lock'.format(self.name)
         self.init_cache()
 
     def reset_cache(self, pipe):
@@ -69,7 +69,7 @@ class Component(ikcms.components.base.Component):
         now_ts = int(time.time())
         try:
             db_updated_ts = self.get_updated_ts_from_db()
-        except sa.exc.DBAPIError as exc:
+        except sa.exc.ProgrammingError as exc:
             logger.warning('Retrieve {} error: {}'.format(self.model, exc))
             return None
 
@@ -162,7 +162,7 @@ class Component(ikcms.components.base.Component):
     def _get_items_meta(self, ids):
         if not ids:
             return []
-        raw_items = self.app.cache.client.hmget(self.cache_key_meta, ids)
+        raw_items = self.app.cache.hmget(self.cache_key_meta, ids)
         items = []
         for id, item in zip(ids, raw_items):
             if item is not None:
@@ -173,7 +173,7 @@ class Component(ikcms.components.base.Component):
     def _get_items_bodies(self, ids):
         if not ids:
             return []
-        raw_items = self.app.cache.client.hmget(self.cache_key_body, ids)
+        raw_items = self.app.cache.hmget(self.cache_key_body, ids)
         items = []
         for id, item in zip(ids, raw_items):
             if item is not None:

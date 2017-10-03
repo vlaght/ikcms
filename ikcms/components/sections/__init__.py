@@ -32,12 +32,12 @@ class Component(ikcms.components.base.Component):
     def __init__(self, app):
         super(Component, self).__init__(app)
         self.model = self.app.db.get_model(self.model)
-        self.cache_key_checked_ts = '{}.checked_ts'.format(self.name)
-        self.cache_key_updated_ts = '{}.updated_ts'.format(self.name)
-        self.cache_key_updating = '{}.updating'.format(self.name)
-        self.cache_key_meta = '{}.meta'.format(self.name)
-        self.cache_key_body = '{}.body'.format(self.name)
-        self.cache_key_lock = '{}.lock'.format(self.name)
+        self.cache_key_checked_ts = '{}:checked_ts'.format(self.name)
+        self.cache_key_updated_ts = '{}:updated_ts'.format(self.name)
+        self.cache_key_updating = '{}:updating'.format(self.name)
+        self.cache_key_meta = '{}:meta'.format(self.name)
+        self.cache_key_body = '{}:body'.format(self.name)
+        self.cache_key_lock = '{}:lock'.format(self.name)
         self.init_cache()
 
     def on_request(self, request):
@@ -88,8 +88,8 @@ class Component(ikcms.components.base.Component):
         now_ts = int(time.time())
         try:
             db_updated_ts = self.get_updated_ts_from_db()
-        except sqlalchemy.exc.DBAPIError as exc:
-            logger.warning('Retrieve updated sections ts error: {}'.format(exc))
+        except sqlalchemy.exc.ProgrammingError as exc:
+            logger.warning('Retrieve sections error: {}'.format(exc))
             return None
 
         # if db not changed, we update cache checked ts
@@ -101,11 +101,7 @@ class Component(ikcms.components.base.Component):
             return cache_updated_ts
 
         # Get sections from db
-        try:
-            sections_meta, sections_body = self.get_sections_from_db()
-        except sqlalchemy.exc.DBAPIError as exc:
-            logger.warning('Retrieve sections error: {}'.format(exc))
-            return None
+        sections_meta, sections_body = self.get_sections_from_db()
 
         sections_meta = {s_id: self._dumps(s) \
             for s_id, s in sections_meta.items()}
@@ -248,7 +244,7 @@ class Component(ikcms.components.base.Component):
     def _get_sections_meta(self, ids):
         if not ids:
             return []
-        raw_sections = self.app.cache.client.hmget(self.cache_key_meta, ids)
+        raw_sections = self.app.cache.hmget(self.cache_key_meta, ids)
         sections = []
         for id, section in zip(ids, raw_sections):
             if section is not None:
@@ -259,7 +255,7 @@ class Component(ikcms.components.base.Component):
     def _get_sections_bodies(self, ids):
         if not ids:
             return []
-        raw_sections = self.app.cache.client.hmget(self.cache_key_body, ids)
+        raw_sections = self.app.cache.hmget(self.cache_key_body, ids)
         sections = []
         for id, section in zip(ids, raw_sections):
             if section is not None:

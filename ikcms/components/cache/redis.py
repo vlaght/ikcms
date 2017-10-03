@@ -43,12 +43,63 @@ class Lock(object):
                 raise self.component.LockLosted(self.key)
 
 
+class Pipe(object):
+
+    def __init__(self, component, pipe):
+        self._pipe = pipe
+
+    def get(self, key):
+        return self._pipe.get(key)
+
+    def mget(self, *keys):
+        return self._pipe.mget(*keys)
+
+    def set(self, key, value, expires=0):
+        return self._pipe.set(key, value, ex=expires)
+
+    def mset(self, mapping):
+        return self._pipe.mset(mapping)
+
+    def hget(self, key, hkey):
+        return self._pipe.hget(key, hkey)
+
+    def hset(self, key, hkey, value):
+        return self._pipe.hset(key, hkey, value)
+
+    def hmget(self, key, hkeys):
+        return self._pipe.hmget(key, hkeys)
+
+    def hmset(self, key, mapping):
+        return self._pipe.hmset(key, mapping)
+
+    def hkeys(self, name):
+        return self._pipe.hkeys(key)
+
+    def hvals(self, key):
+        return self._pipe.hvals(key)
+
+    def hdel(self, key, *hkeys):
+        return self._pipe.hdel(key, *hkeys)
+
+    def add(self, key, value, expires=0):
+        return self._pipe.set(key, value, ex=expires, nx=True)
+
+    def delete(self, *keys):
+        return self._pipe.delete(*keys)
+
+    def watch(self, key):
+        return self._pipe.watch(key)
+
+    def __enter__(self):
+        return self._pipe.__enter__()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return self._pipe.__exit__(exc_type, exc_value, traceback)
+
+
 class Component(base.Component):
 
-    DEFAULT_REDIS_HOST = 'localhost'
-    DEFAULT_REDIS_PORT = 6379
-    DEFAULT_REDIS_DB = 0
-    PREFIX = ''
+    DEFAULT_REDIS_URL = "redis://localhost:6379/0"
     WatchError = redis.WatchError
 
     class LockTimeout(Exception): pass
@@ -57,43 +108,56 @@ class Component(base.Component):
     def __init__(self, app, client):
         super(Component, self).__init__(app)
         self.client = client
-        self.prefix = getattr(app.cfg, 'REDIS_PREFIX', self.PREFIX)
 
     @classmethod
     def create(cls, app):
-        host = getattr(app.cfg, 'REDIS_HOST', cls.DEFAULT_REDIS_HOST)
-        port = getattr(app.cfg, 'REDIS_PORT', cls.DEFAULT_REDIS_PORT)
-        db = getattr(app.cfg, 'REDIS_DB', cls.DEFAULT_REDIS_DB)
-        return cls(app, client=redis.Redis(host=host, port=port, db=db))
+        url = getattr(app.cfg, 'REDIS_URL', cls.DEFAULT_REDIS_URL)
+        return cls(app, client=redis.StrictRedis.from_url(url))
 
     def get(self, key):
-        return self.client.get(self._key(key))
+        return self.client.get(key)
 
     def mget(self, *keys):
-        return self.client.mget(*[self._key(key) for key in keys])
+        return self.client.mget(*keys)
 
     def set(self, key, value, expires=0):
-        return self.client.set(self._key(key), value, ex=expires)
+        return self.client.set(key, value, ex=expires)
 
     def mset(self, mapping):
-        mapping = {self._key(key): value for key, value in mapping.items()}
         return self.client.mset(mapping)
 
     def add(self, key, value, expires=0):
-        return self.client.set(self._key(key), value, ex=expires, nx=True)
+        return self.client.set(key, value, ex=expires, nx=True)
 
     def delete(self, *keys):
-        return self.client.delete(*[self._key(key) for key in keys])
+        return self.client.delete(*keys)
+
+    def hget(self, key, hkey):
+        return self.client.hget(key, hkey)
+
+    def hset(self, key, hkey, value):
+        return self.client.hset(key, hkey, value)
+
+    def hmget(self, key, hkeys):
+        return self.client.hmget(key, hkeys)
+
+    def hmset(self, key, mapping):
+        return self.client.hmset(key, mapping)
+
+    def hkeys(self, name):
+        return self.client.hkeys(key)
+
+    def hvals(self, key):
+        return self.client.hvals(key)
+
+    def hdel(self, key, *hkeys):
+        return self._pipe.hdel(key, *hkeys)
 
     def pipe(self):
-        # XXX need wrapper?
-        return self.client.pipeline()
+        return Pipe(self, self.client.pipeline())
 
     def lock(self, key, expires=60, timeout=10, sleep=0.5):
-        return Lock(self, self._key(key), expires, timeout, sleep)
-
-    def _key(self, key):
-        return self.prefix + key
+        return Lock(self, key, expires, timeout, sleep)
 
 
 component = Component.create_cls
