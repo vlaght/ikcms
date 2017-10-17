@@ -88,7 +88,7 @@ class Component(ikcms.components.base.Component):
         now_ts = int(time.time())
         try:
             db_updated_ts = self.get_updated_ts_from_db()
-        except sqlalchemy.exc.ProgrammingError as exc:
+        except sqlalchemy.exc.DBAPIError as exc:
             logger.warning('Retrieve sections error: {}'.format(exc))
             return None
 
@@ -101,7 +101,11 @@ class Component(ikcms.components.base.Component):
             return cache_updated_ts
 
         # Get sections from db
-        sections_meta, sections_body = self.get_sections_from_db()
+        try:
+            sections_meta, sections_body = self.get_sections_from_db()
+        except sqlalchemy.exc.DBAPIError as exc:
+            logger.warning('Retrieve sections error: {}'.format(exc))
+            return None
 
         sections_meta = {s_id: self._dumps(s) \
             for s_id, s in sections_meta.items()}
