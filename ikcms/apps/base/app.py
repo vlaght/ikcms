@@ -96,8 +96,9 @@ class App(object):
                 'Unusual header "Host: %s", return HTTPNotFound',
                 environ['HTTP_HOST'])
             return self.HTTPNotFound()(environ, start_response)
+
+        request = self.get_request(environ)
         try:
-            request = self.get_request(environ)
             env = self.get_env(request)
             data = self.get_data()
             response = self.handle(env, data)

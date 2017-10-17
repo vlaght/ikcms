@@ -29,6 +29,9 @@ class Component(ikcms.components.base.Component):
         self.cache_key_lock = '{}:lock'.format(self.name)
         self.init_cache()
 
+    def on_request(self, request):
+        self.update_cache()
+
     def reset_cache(self, pipe):
         self.app.cache.delete(
             self.cache_key_updated_ts,

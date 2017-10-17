@@ -5,6 +5,9 @@ import cPickle as pickle
 import sqlalchemy as sa
 
 
+logger = logging.getLogger(__name__)
+
+
 class CachedModel(object):
 
     check_timeout = 5
