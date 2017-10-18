@@ -77,7 +77,7 @@ class CachedModel(object):
         now_ts = int(time.time())
         try:
             db_updated_ts = self.get_updated_ts_from_db()
-        except sa.exc.ProgrammingError as exc:
+        except sa.exc.DBAPIError as exc:
             logger.warning('Retrieve {} error: {}'.format(self.model, exc))
             return None
 
@@ -91,7 +91,12 @@ class CachedModel(object):
             return cache_updated_ts
 
         # Get items from db
-        items = self.get_items_from_db()
+        try:
+            items = self.get_items_from_db()
+        except sa.exc.DBAPIError as exc:
+            logger.warning('Retrieve sections error: {}'.format(exc))
+            return None
+
         indexes = self.create_indexes(items)
         raw_items = {id: self._dumps(item) for id, item in items.items()}
         raw_indexes = {id: self._dumps(item) for id, item in indexes.items()}
