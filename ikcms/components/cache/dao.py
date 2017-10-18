@@ -13,6 +13,7 @@ class CachedModel(object):
     check_timeout = 5
     lock_timeout = 5
     checked_ts = 0
+    updated_ts = 0
 
     def __init__(self, component, model_path):
         self.component = component
@@ -54,9 +55,8 @@ class CachedModel(object):
             self._cache_key('updated_ts'),
         )
         try:
-            cache_checked_ts = int(cache_checked_ts)
-            self.checked_ts = cache_checked_ts
-            cache_updated_ts = int(cache_updated_ts)
+            self.checked_ts = cache_checked_ts = int(cache_checked_ts)
+            self.updated_ts = cache_updated_ts = int(cache_updated_ts)
         except (TypeError, ValueError):
             cache_checked_ts = None
             cache_updated_ts = None
@@ -111,6 +111,7 @@ class CachedModel(object):
                 pipe.hmset(self._cache_key('indexes'), raw_indexes)
             pipe.delete(self._cache_key('updating'))
             pipe.execute()
+        self.updated_ts = db_updated_ts
         return db_updated_ts
 
     def get_updated_ts_from_db(self):
