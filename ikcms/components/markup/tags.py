@@ -17,8 +17,9 @@ class IktomiMediaTag(ikcms.components.render.jinja2.custom_tags.Tag):
         media = next((b for b in collection if b.id == media_id), None)
         if media:
             assert media.type in self.media_types, \
-                'Unknown media type {}'.format(media_type)
+                'Unknown media type {}'.format(media.type)
             return dict(
+                env=env,
                 item=item,
                 media=media,
                 **kwargs
