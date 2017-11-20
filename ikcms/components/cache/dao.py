@@ -157,8 +157,7 @@ class CachedModel(object):
         raw_index = self.app.cache.hget(self._cache_key('indexes'), name)
         if not raw_index:
             raise Exception('Index "{}" not found'.format(name))
-        index = self._loads(raw_index)
-        return self.get_items(index)
+        return self._loads(raw_index)
 
     def create_indexes(self, items):
         return {}
