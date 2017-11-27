@@ -1,13 +1,12 @@
-import os
-import sys
-import pwd
 import inspect
 import logging
-from urlparse import urlparse
+import os
+import pwd
+import sys
 
-from ikcms.utils import cached_property
-from ikcms.utils import FilePath
 from ikcms.utils import DirPath
+from ikcms.utils import FilePath
+from ikcms.utils import cached_property
 
 
 class Cfg(object):

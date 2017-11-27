@@ -130,7 +130,6 @@ class POCatalog(object):
             return None
         if not po_file.exists():
             warnings.warn("File {} doesn't exist".format(po_file))
-            print po_file.scheme
             return None
         with po_file.open('U') as po_fp:
             translations = POTranslations(po_fp, lang)
