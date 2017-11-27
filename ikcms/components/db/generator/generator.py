@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from StringIO import StringIO
+from io import StringIO
 from datetime import datetime, timedelta
 from random import randint, choice, sample, randrange, random
 
