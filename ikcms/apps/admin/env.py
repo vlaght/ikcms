@@ -24,7 +24,11 @@ class Environment(ikcms.apps.composite.env.Environment):
         if getattr(self, '_flash', None):
             assert '_flashmessages' not in data
             data = dict(data, _flashmessages=self._flash)
-        return Response(json.dumps(data), content_type="application/json")
+        return Response(
+            json.dumps(data),
+            content_type="application/json",
+            charset='utf8',
+        )
 
     @cached_property
     def cfg(self):
