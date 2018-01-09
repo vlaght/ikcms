@@ -14,6 +14,7 @@ class CachedModel(object):
     lock_timeout = 5
     checked_ts = 0
     updated_ts = 0
+    created_ts = 0
 
     def __init__(self, component, model_path):
         self.component = component
@@ -22,23 +23,22 @@ class CachedModel(object):
         self.model = self.app.db.get_model(model_path)
         self.preview = hasattr(self.app, 'preview')
         self.front_db_id = self.preview and 'admin' or 'front'
-        t = time.time()
         self.init_cache()
-        logging.info('{} cache initialized: {}'.format(
-            model_path,
-            time.time()-t,
-        ))
 
-    def reset_cache(self, pipe):
-        self.app.cache.delete(
-            self._cache_key('checked_ts'),
-            self._cache_key('updated_ts'),
-            self._cache_key('updating'),
-            self._cache_key('items'),
-            self._cache_key('indexes'),
-        )
+    def reset_cache(self):
+        with self.app.cache.pipe() as pipe:
+            self.app.cache.delete(
+                self._cache_key('checked_ts'),
+                self._cache_key('updated_ts'),
+                self._cache_key('created_ts'),
+                self._cache_key('updating'),
+                self._cache_key('items'),
+                self._cache_key('indexes'),
+            )
 
     def init_cache(self):
+        if self.app.cache.get(self._cache_key('created_ts')):
+            return
         with self.app.cache.lock(
             self._cache_key('lock'),
             expires=self.lock_timeout,
@@ -50,13 +50,16 @@ class CachedModel(object):
             return
 
         # check update timeout
-        cache_checked_ts, cache_updated_ts = self.app.cache.mget(
-            self._cache_key('checked_ts'),
-            self._cache_key('updated_ts'),
-        )
+        cache_checked_ts, cache_updated_ts, cache_created_ts = \
+            self.app.cache.mget(
+                self._cache_key('checked_ts'),
+                self._cache_key('updated_ts'),
+                self._cache_key('created_ts'),
+            )
         try:
             self.checked_ts = cache_checked_ts = int(cache_checked_ts)
             self.updated_ts = cache_updated_ts = int(cache_updated_ts)
+            self.created_ts = cache_created_ts = int(cache_created_ts)
         except (TypeError, ValueError):
             cache_checked_ts = None
             cache_updated_ts = None
@@ -105,6 +108,7 @@ class CachedModel(object):
         with self.app.cache.pipe() as pipe:
             pipe.set(self._cache_key('updated_ts'), db_updated_ts)
             pipe.set(self._cache_key('checked_ts'), now_ts)
+            pipe.set(self._cache_key('created_ts'), now_ts)
             if raw_items:
                 pipe.hmset(self._cache_key('items'), raw_items)
             if raw_indexes:
@@ -112,6 +116,11 @@ class CachedModel(object):
             pipe.delete(self._cache_key('updating'))
             pipe.execute()
         self.updated_ts = db_updated_ts
+        logging.info('{} cache updated: {}'.format(
+            self.model_path,
+            time.time()-now_ts,
+        ))
+
         return db_updated_ts
 
     def get_updated_ts_from_db(self):
@@ -153,10 +162,13 @@ class CachedModel(object):
         else:
             return item
 
-    def get_index(self, name):
+    def get_index(self, name, default=Exception):
         raw_index = self.app.cache.hget(self._cache_key('indexes'), name)
         if not raw_index:
-            raise Exception('Index "{}" not found'.format(name))
+            if default is Exception:
+                raise Exception('Index "{}" not found'.format(name))
+            else:
+                return default
         return self._loads(raw_index)
 
     def create_indexes(self, items):
