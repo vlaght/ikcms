@@ -94,6 +94,11 @@ class PreviewStreamAction(GetAction):
     action = 'preview'
     title = u'Превью'
     mode = 'internal'
+    get_url = lambda env, item: env.url_for_obj(item)
+
+    def __init__(self, stream=None, **kw):
+        super(PreviewStreamAction, self).__init__(stream, **kw)
+        self.get_url = kw.get('get_url', self.get_url)
 
     @property
     def app(self):
@@ -105,7 +110,7 @@ class PreviewStreamAction(GetAction):
         if hasattr(env, 'lang'):
             preview_app.i18n.set_lang(preview_env, env.lang)
         try:
-            return preview_env.url_for_obj(item)
+            return self.get_url(preview_env, item)
         finally:
             preview_env.close()
 
