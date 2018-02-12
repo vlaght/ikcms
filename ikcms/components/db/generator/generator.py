@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from StringIO import StringIO
+from io import StringIO
 from datetime import datetime, timedelta
 from random import randint, choice, sample, randrange, random
 
@@ -9,7 +9,7 @@ from ikcms.components.markup.model import ExpandableMarkup
 from .vesna import phrase, randname
 
 
-# import logging
+import logging
 # logging.basicConfig()
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
@@ -159,7 +159,7 @@ class Generate(object):
     def run(cls, app, names=[]):
         for f in cls.registered:
             if not names or f.name in names:
-                print 'Generating %i item(s) for: %s' % (f.count, f.model)
+                logging.info('Generating %i item(s) for: %s', f.count, f.model)
                 f(app)
 
     def __init__(self, model, **kwargs):
@@ -195,7 +195,7 @@ class Generate(object):
 
         wrapper.count = self.count
         wrapper.model = self.model
-        wrapper.name = f.func_name
+        wrapper.name = f.__name__
         self.registered.append(wrapper)
         return wrapper
 
@@ -208,7 +208,7 @@ class Update(Generate):
     def run(cls, app, names=[]):
         for f in cls.registered:
             if not names or f.name in names:
-                print 'Updating item(s) for: %s' % (f.model)
+                logging.info('Updating item(s) for: %s', f.model)
                 f(app)
 
     def __call__(self, f):

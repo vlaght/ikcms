@@ -1,10 +1,10 @@
 import os
+
 import pkg_resources
-from urlparse import urlparse
+from six.moves.urllib.parse import urlparse
 
 
 class UrlBase(object):
-
     def __init__(self, url):
         super(UrlBase, self).__init__()
         self._url = url
@@ -44,7 +44,6 @@ class UrlBase(object):
 
 
 class FSUrl(UrlBase):
-
     def __init__(self, root, url):
         super(FSUrl, self).__init__(url)
         self.root = root
@@ -85,7 +84,7 @@ class FSUrl(UrlBase):
             os.makedirs(self.path)
 
     def isreadonly(self):
-#XXX
+        # XXX
         return False
 
     def join(self, path):
@@ -96,7 +95,6 @@ class FSUrl(UrlBase):
 
 
 class PKGResourcesUrl(UrlBase):
-
     def __init__(self, url):
         super(PKGResourcesUrl, self).__init__(url)
         if self._url.params:
@@ -140,7 +138,6 @@ SCHEMES = {
 
 
 class PathBase(object):
-
     def __init__(self, cfg, str_path, schemes=None):
         super(PathBase, self).__init__()
         self.cfg = cfg
@@ -160,7 +157,6 @@ class PathBase(object):
 
 
 class DirPath(PathBase):
-
     def __init__(self, cfg, str_path, schemes=['']):
         super(DirPath, self).__init__(cfg, str_path, schemes)
 
@@ -184,7 +180,6 @@ class DirPath(PathBase):
 
 
 class FilePath(PathBase):
-
     def __init__(self, cfg, str_path, schemes=['']):
         super(FilePath, self).__init__(cfg, str_path, schemes)
 
@@ -211,4 +206,3 @@ class FilePath(PathBase):
 
     def isreadonly(self):
         return self.url.isreadonly()
-

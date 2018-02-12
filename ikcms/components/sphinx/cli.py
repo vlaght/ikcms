@@ -1,4 +1,4 @@
-import sys
+import logging
 from importlib import import_module
 from ikcms.cli.base import Cli
 
@@ -11,7 +11,7 @@ class SphinxCli(Cli):
         xmlpipes = app.sphinx.xmlpipes
         import_string = xmlpipes.get(name)
         if not import_string:
-            print 'Unknown xmlpipe "{}"'.format(name)
+            logging.info('Unknown xmlpipe "%s"', name)
             raise SystemExit
         try:
             module_name, xmlpipe_name = import_string.rsplit('.', 1)
@@ -19,8 +19,10 @@ class SphinxCli(Cli):
             xmlpipe = getattr(module, xmlpipe_name)
             xmlpipe(app)
         except ImportError as exc:
-            print 'Could not load module "{}"'.format(module_name)
+            logging.info('Could not load module "%s"', module_name)
             raise SystemExit
         except AttributeError as exc:
-            print 'Could not find function "{}" in "{}"'.format(xmlpipe_name, module_name)
+            logging.info('Could not find function "%s" in "%s"',
+                         xmlpipe_name,
+                         module_name)
             raise SystemExit
