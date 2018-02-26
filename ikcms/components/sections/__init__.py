@@ -28,6 +28,8 @@ class Component(ikcms.components.base.Component):
         'page': views.PageView,
         'view': views.PageView,
     }
+    custom_views = {}
+
 
     def __init__(self, app):
         super(Component, self).__init__(app)
@@ -141,6 +143,7 @@ class Component(ikcms.components.base.Component):
             order_by(self.model.order.asc()).all()
 
         objs_by_id = {obj.id: obj for obj in sections_objs}
+
         sections = [section.to_meta_dict() for section in sections_objs \
             if section.slug]
         sections_by_id = {section['id']: section for section in sections}
@@ -236,7 +239,11 @@ class Component(ikcms.components.base.Component):
         for subsection in subsections:
             if not subsection:
                 continue
-            view = self.views[subsection['type']]
+
+            path = '.'.join(subsection['path'])
+            view  = self.custom_views.get(path)
+            if not view:
+                view = self.views[subsection['type']]
             handler = view.handler(self, subsection)
             handlers.append(handler)
         return h_cases(*handlers)
