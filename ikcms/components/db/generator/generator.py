@@ -233,7 +233,7 @@ class Update(Generate):
                         obj.publish()
 
         wrapper.model = self.model
-        wrapper.name = f.func_name
+        wrapper.name = f.__name__
         self.registered.append(wrapper)
         return wrapper
 
