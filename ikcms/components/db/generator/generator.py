@@ -228,8 +228,9 @@ class Update(Generate):
                 for key, value in relation_fields.items():
                     setattr(obj, key, value)
                 db.commit()
-                if random() > 0.2:
-                    obj.publish()
+                if callable(getattr(obj, 'publish', None)):
+                    if random() > 0.2:
+                        obj.publish()
 
         wrapper.model = self.model
         wrapper.name = f.func_name
