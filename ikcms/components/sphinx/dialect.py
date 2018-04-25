@@ -216,6 +216,9 @@ class Dialect(dialect):
     supports_views = False
     description_encoding = None
 
+    def _get_server_version_info(self, connection):
+        return (4, 1)
+
     def _check_unicode_returns(self, connection, additional_tests=None):
         return True
 
