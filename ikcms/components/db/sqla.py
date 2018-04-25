@@ -52,7 +52,7 @@ class Component(ikcms.components.db.base.DBComponent):
         #env.models = self.env_models
 
     def on_close_env(self, env):
-        env.db.close()
+        getattr(env, self.name).close()
 
     @staticmethod
     def get_models(db_id):
