@@ -39,7 +39,7 @@ def render(res, res_dir, target_dir='', kwargs={}):
                 return
             s = env.get_template(path).render(kwargs)
             with open(target_path, 'w') as f:
-                f.write(s.encode('utf-8'))
+                f.write(s)
             print('{} created'.format(target_path))
 
 class AppsCfg(dict):
