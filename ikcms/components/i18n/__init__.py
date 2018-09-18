@@ -55,7 +55,8 @@ class Lang(str):
 
     def gettext(self, msgid):
         message = self.translations.gettext(unicode(msgid))
-#XXX
+        if not message:
+            return msgid
         if isinstance(msgid, Markup):
             message = Markup(message)
         return message
@@ -66,9 +67,12 @@ class Lang(str):
             unicode(msgid2),
             n,
         )
+        if not message:
+            return msgid1
         if isinstance(msgid1, Markup):
             message = Markup(message)
         return message
+
 
     def _(self, msgid):
         return self.gettext(msgid)
