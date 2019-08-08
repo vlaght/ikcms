@@ -1,6 +1,7 @@
 import time
+import random
 import logging
-import cPickle as pickle
+import pickle
 
 import sqlalchemy as sa
 
@@ -15,26 +16,43 @@ class CachedModel(object):
     checked_ts = 0
     updated_ts = 0
     created_ts = 0
+    prefix = None
 
-    def __init__(self, component, model_path):
+    def __init__(self, component, model_path, prefix=None):
         self.component = component
         self.app = component.app
         self.model_path = model_path
         self.model = self.app.db.get_model(model_path)
         self.preview = hasattr(self.app, 'preview')
         self.front_db_id = self.preview and 'admin' or 'front'
+        if prefix:
+            self.prefix = prefix
         self.init_cache()
 
     def reset_cache(self):
+        tmp = self.__class__(
+            self.component,
+            self.model_path,
+            prefix=str(random.randint(1000, 100000)),
+        )
+
         with self.app.cache.pipe() as pipe:
-            self.app.cache.delete(
-                self._cache_key('checked_ts'),
-                self._cache_key('updated_ts'),
-                self._cache_key('created_ts'),
-                self._cache_key('updating'),
-                self._cache_key('items'),
-                self._cache_key('indexes'),
-            )
+            keys = [
+                'checked_ts',
+                'updated_ts',
+                'created_ts',
+                'items',
+                'indexes',
+            ]
+            for key in keys:
+                if self.app.cache.client.exists(tmp._cache_key(key)):
+                    pipe.rename(
+                        tmp._cache_key(key),
+                        self._cache_key(key),
+                    )
+            pipe.execute()
+
+
 
     def init_cache(self):
         if self.app.cache.get(self._cache_key('created_ts')):
@@ -104,7 +122,7 @@ class CachedModel(object):
         raw_items = {id: self._dumps(item) for id, item in items.items()}
         raw_indexes = {id: self._dumps(item) for id, item in indexes.items()}
 
-        # Update cache 
+        # Update cache
         with self.app.cache.pipe() as pipe:
             pipe.set(self._cache_key('updated_ts'), db_updated_ts)
             pipe.set(self._cache_key('checked_ts'), now_ts)
@@ -122,6 +140,9 @@ class CachedModel(object):
         ))
 
         return db_updated_ts
+
+    def version(self, session):
+        return self.app.cache.get(self._cache_key('created_ts'))
 
     def get_updated_ts_from_db(self):
         session = self.app.db()
@@ -177,8 +198,10 @@ class CachedModel(object):
     def _get_objs_from_db(self, session):
         return session.query(self.model).all()
 
+
     def _cache_key(self, name):
-        return '{}:{}'.format(self.model_path, name)
+        return '{}{}:{}'.format(self.prefix or '', self.model_path, name)
+
 
     def _query(self, session):
         return session.query(self.model)
