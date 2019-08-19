@@ -52,7 +52,7 @@ class Component(ikcms.components.base.Component):
     def stringify(tag, encoding='utf-8'):
         head = tag.text or ''
         tail = ''.join([
-            lxml.html.tostring(child, encoding=encoding)
+            lxml.html.tostring(child, encoding=encoding, method='xml')
             for child in tag.iterchildren()
         ])
         return ''.join([head, tail.decode(encoding)])
