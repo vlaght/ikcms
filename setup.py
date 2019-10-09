@@ -43,7 +43,7 @@ setup(
         'aiomysql': ['aiomysql'],
         'aiopg': ['aiopg'],
         'memcache': [
-            PY3 and 'python3-memcached' or 'python-memcached',
+            PY3 and 'pymemcache' or 'pymemcache',
         ],
         'aiomcache': ['aiomcache'],
         'redis': ['redis'],
