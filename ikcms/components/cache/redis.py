@@ -120,13 +120,13 @@ class Component(base.Component):
     def mget(self, *keys):
         return self.client.mget(*keys)
 
-    def set(self, key, value, expires=0):
+    def set(self, key, value, expires=None):
         return self.client.set(key, value, ex=expires)
 
     def mset(self, mapping):
         return self.client.mset(mapping)
 
-    def add(self, key, value, expires=0):
+    def add(self, key, value, expires=None):
         return self.client.set(key, value, ex=expires, nx=True)
 
     def delete(self, *keys):
