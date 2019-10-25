@@ -2,6 +2,7 @@ import os
 import fnmatch
 import sys
 from multiprocessing import Process
+from itertools import chain
 from iktomi.cli.app import App as _AppCli
 from iktomi.cli.app import wait_for_code_change
 from iktomi.cli.app import flush_fds
@@ -31,8 +32,13 @@ class AppCli(Cli):
         cfg = self.create_cfg()
 
         extra_files = []
+        file_types = ['*.py', '*.yaml']
+
         for root, dirnames, filenames in os.walk(cfg.ROOT_DIR):
-            for filename in fnmatch.filter(filenames, '*.py'):
+            filenames_to_check = chain.from_iterable(
+                fnmatch.filter(filenames, files) for files in file_types
+            )
+            for filename in filenames_to_check:
                 extra_files.append(os.path.join(root, filename))
 
         try:
